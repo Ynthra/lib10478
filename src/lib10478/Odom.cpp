@@ -2,7 +2,7 @@
 #include "pros/rtos.h"
 #include "pros/rtos.hpp"
 #include "units/Angle.hpp"
-#include "units/pose.hpp"
+#include "units/Pose.hpp"
 #include "units/units.hpp"
 #include <mutex>
 

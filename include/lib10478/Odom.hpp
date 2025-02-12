@@ -1,9 +1,9 @@
 #pragma once
-#include "hardware/IMU/Imu.hpp"
+#include "hardware/IMU/IMU.hpp"
 #include "pros/rtos.hpp"
 #include "units/Angle.hpp"
-#include "units/pose.hpp"
-#include "hardware/encoder/Encoder.hpp"
+#include "units/Pose.hpp"
+#include "hardware/Encoder/Encoder.hpp"
 
 
 namespace lib10478 {

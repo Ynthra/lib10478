@@ -2,6 +2,7 @@
 #include "lib10478/PID.hpp"
 #include "lib10478/lib10478.hpp"
 #include "hardware/Encoder/V5RotationSensor.hpp"
+#include "hardware/IMU/V5InertialSensor.hpp"
 
 extern lib10478::Chassis chassis;
 

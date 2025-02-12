@@ -1,6 +1,5 @@
 #include "Chassis.hpp"
 #include "Profile.hpp"
-#include "hardware/IMU/Imu.hpp"
 #include "hardware/Port.hpp"
 #include "lib10478/Odom.hpp"
 #include "hardware/Motor/MotorGroup.hpp"
@@ -12,7 +11,7 @@
 #include "units/Angle.hpp"
 #include "units/Pose.hpp"
 #include "units/Vector2D.hpp"
-#include "units/pose.hpp"
+#include "units/Pose.hpp"
 #include "units/units.hpp"
 #include <cmath>
 #include <cstdint>

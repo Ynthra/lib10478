@@ -2,7 +2,6 @@
 #include "lib10478/Odom.hpp"
 #include "pros/rtos.hpp"
 #include "units/Pose.hpp"
-#include "units/pose.hpp"
 #include "units/units.hpp"
 #include "units/Angle.hpp"
 #include "hardware/Motor/MotorGroup.hpp"
@@ -10,7 +9,6 @@
 #include <utility>
 #include "bezier.hpp"
 #include "Profile.hpp"
-#include "hardware/IMU/V5InertialSensor.hpp"
 #include "StateMachine.hpp"
 #include "VelocityController.hpp"
 namespace lib10478
