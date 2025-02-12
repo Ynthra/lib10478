@@ -34,4 +34,18 @@ private:
     Eigen::Matrix<double, 2, 4> secondDerivativeCoef;
 };
 
+class Spline : public virtualPath 
+{
+public:
+    Spline(std::vector<virtualPath*> paths);
+
+    units::V2Position getPoint(double t);
+    units::V2Position getDerivative(double t);
+    units::V2Position getSecondDerivative(double t);
+    Curvature getCurvature(double t);
+private:
+    std::vector<virtualPath*> paths;
+    std::pair<int,double> convertT(double t);
+};
+
 } //namespace lib10478

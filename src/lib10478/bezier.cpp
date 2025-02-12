@@ -1,3 +1,5 @@
+#include "bezier.hpp"
+#include "Eigen/src/Core/Redux.h"
 #include "lib10478/lib10478.hpp"
 #include "units/Vector2D.hpp"
 #include "units/units.hpp"
@@ -57,4 +59,39 @@ Curvature CubicBezier::getCurvature(double t)
     V2Position dd = this->getSecondDerivative(t);
     Curvature k = (d.x * dd.y - d.y * dd.x) / (d.magnitude()*d.magnitude()*d.magnitude());
     return k;
+}
+
+
+
+Spline::Spline(std::vector<virtualPath*> paths)
+: paths(paths)
+{}
+
+units::V2Position Spline::getPoint(double t)
+{
+    auto [index, tIndex] = convertT(t);
+    return paths[index]->getPoint(tIndex);
+}
+units::V2Position Spline::getDerivative(double t)
+{
+    auto [index, tIndex] = convertT(t);
+    return paths[index]->getDerivative(tIndex);
+}
+units::V2Position Spline::getSecondDerivative(double t)
+{
+    auto [index, tIndex] = convertT(t);
+    return paths[index]->getSecondDerivative(tIndex);
+}
+Curvature Spline::getCurvature(double t)
+{
+    auto [index, tIndex] = convertT(t);
+    return paths[index]->getCurvature(tIndex);
+}
+
+std::pair<int,double> Spline::convertT(double t)
+{
+    t *= paths.size();
+    if(t < 0) return {0,0};
+    if (t >= paths.size()) return {paths.size()-1,1};
+    return {int(t),t-int(t)};
 }
