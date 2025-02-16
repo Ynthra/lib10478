@@ -1,5 +1,6 @@
 #include "auton.hpp"
 #include "intake.hpp"
+#include "lib10478/bezier.hpp"
 #include "lib10478/lib10478.hpp"
 #include "globals.hpp"
 #include "pros/device.hpp"
@@ -9,7 +10,6 @@
 constexpr int x = (TEAMCOLOR == BLUE)-(TEAMCOLOR == RED);
 void solowp(){
     const auto getGoal = chassis.generateProfile(new lib10478::CubicBezier({56.436_in*x, -30.293_in}, {50.106_in*x, -30.293_in},{42.251_in*x, -29.355_in},{31.231_in*x, -22.321_in}),0.1_in);
-
 
     chassis.setPose({56.436_in*x, -30.293_in,from_cDeg(90*x)});
 

@@ -18,7 +18,7 @@ public:
 class CubicBezier : public virtualPath
 {
 public:
-    CubicBezier(const units::V2Position &p0, const units::V2Position &p1, const units::V2Position &p2, const units::V2Position &p3);
+    CubicBezier(const units::V2Position& p0, const units::V2Position& p1, const units::V2Position& p2, const units::V2Position& p3);
 
     units::V2Position getPoint(double t);
     units::V2Position getDerivative(double t);
@@ -37,14 +37,14 @@ private:
 class Spline : public virtualPath 
 {
 public:
-    Spline(std::vector<virtualPath*> paths);
+    Spline(std::vector<virtualPath>* paths);
 
     units::V2Position getPoint(double t);
     units::V2Position getDerivative(double t);
     units::V2Position getSecondDerivative(double t);
     Curvature getCurvature(double t);
 private:
-    std::vector<virtualPath*> paths;
+    std::vector<virtualPath>* paths;
     std::pair<int,double> convertT(double t);
 };
 
