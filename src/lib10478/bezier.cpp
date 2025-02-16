@@ -63,35 +63,35 @@ Curvature CubicBezier::getCurvature(double t) const
 
 
 
-Spline::Spline(std::vector<virtualPath>* paths)
+Spline::Spline(std::vector<virtualPath*> paths)
 : paths(paths)
 {}
 
 units::V2Position Spline::getPoint(double t) const
 {
     auto [index, tIndex] = convertT(t);
-    return paths->at(index).getPoint(tIndex);
+    return paths[index]->getPoint(tIndex);
 }
 units::V2Position Spline::getDerivative(double t) const
 {
     auto [index, tIndex] = convertT(t);
-    return paths->at(index).getDerivative(tIndex);
+    return paths[index]->getDerivative(tIndex);
 }
 units::V2Position Spline::getSecondDerivative(double t) const
 {
     auto [index, tIndex] = convertT(t);
-    return paths->at(index).getSecondDerivative(tIndex);
+    return paths[index]->getSecondDerivative(tIndex);
 }
 Curvature Spline::getCurvature(double t) const
 {
     auto [index, tIndex] = convertT(t);
-    return paths->at(index).getCurvature(tIndex);
+    return paths[index]->getCurvature(tIndex);
 }
 
 std::pair<int,double> Spline::convertT(double t) const
 {
-    t *= paths->size();
+    t *= paths.size();
     if(t < 0) return {0,0};
-    if (t >= paths->size()) return {paths->size()-1,1};
+    if (t >= paths.size()) return {paths.size()-1,1};
     return {int(t),t-int(t)};
 }

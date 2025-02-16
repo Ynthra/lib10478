@@ -13,6 +13,7 @@ public:
     virtual units::V2Position getDerivative(double t) const = 0;
     virtual units::V2Position getSecondDerivative(double t) const = 0;
     virtual Curvature getCurvature(double t) const = 0;
+    virtual ~virtualPath() = default;
 };
 
 class CubicBezier : public virtualPath
@@ -37,14 +38,21 @@ private:
 class Spline : public virtualPath 
 {
 public:
-    Spline(std::vector<virtualPath>* paths);
+    Spline(std::vector<virtualPath*> paths);
+    ~Spline() {
+        for (auto* path : paths) {
+            delete path;
+        }
+    }
+    Spline(const Spline&) = delete; // No copying
+    Spline& operator=(const Spline&) = delete; // No assignment
 
     units::V2Position getPoint(double t) const;
     units::V2Position getDerivative(double t) const;
     units::V2Position getSecondDerivative(double t) const;
     Curvature getCurvature(double t) const;
 private:
-    std::vector<virtualPath>* paths;
+    std::vector<virtualPath*> paths;
     std::pair<int,double> convertT(double t) const;
 };
 
