@@ -70,28 +70,28 @@ Spline::Spline(std::vector<virtualPath>* paths)
 units::V2Position Spline::getPoint(double t)
 {
     auto [index, tIndex] = convertT(t);
-    return paths[index].getPoint(tIndex);
+    return paths->at(index).getPoint(tIndex);
 }
 units::V2Position Spline::getDerivative(double t)
 {
     auto [index, tIndex] = convertT(t);
-    return paths[index].getDerivative(tIndex);
+    return paths->at(index).getDerivative(tIndex);
 }
 units::V2Position Spline::getSecondDerivative(double t)
 {
     auto [index, tIndex] = convertT(t);
-    return paths[index].getSecondDerivative(tIndex);
+    return paths->at(index).getSecondDerivative(tIndex);
 }
 Curvature Spline::getCurvature(double t)
 {
     auto [index, tIndex] = convertT(t);
-    return paths[index].getCurvature(tIndex);
+    return paths->at(index).getCurvature(tIndex);
 }
 
 std::pair<int,double> Spline::convertT(double t)
 {
-    t *= paths.size();
+    t *= paths->size();
     if(t < 0) return {0,0};
-    if (t >= paths.size()) return {paths.size()-1,1};
+    if (t >= paths->size()) return {paths->size()-1,1};
     return {int(t),t-int(t)};
 }
