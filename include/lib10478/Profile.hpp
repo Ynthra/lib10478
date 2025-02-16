@@ -31,7 +31,7 @@ public:
     
     const Length dd;
     std::vector<ProfilePoint> profile;
-private:
+
     int prev = 0;
 };
 

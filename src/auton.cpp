@@ -9,14 +9,14 @@
 #include <sys/_intsup.h>
 constexpr int x = (TEAMCOLOR == BLUE)-(TEAMCOLOR == RED);
 void solowp(){
-    const auto getGoal = chassis.generateProfile(new lib10478::CubicBezier({56.436_in*x, -30.293_in}, {50.106_in*x, -30.293_in},{42.251_in*x, -29.355_in},{31.231_in*x, -22.321_in}),0.1_in);
+    const auto getGoal = chassis.generateProfile(lib10478::CubicBezier({56.436_in*x, -30.293_in}, {50.106_in*x, -30.293_in},{42.251_in*x, -29.355_in},{31.231_in*x, -22.321_in}),0.1_in);
 
     chassis.setPose({56.436_in*x, -30.293_in,from_cDeg(90*x)});
 
     chassis.followProfile(getGoal,{.useRAMSETE= true,.followReversed = true});
-    const auto getFirstRing = chassis.generateProfile(new lib10478::CubicBezier({31.348_in*x, -23.376_in}, {38.441_in*x, -27.904_in}, {35.334_in*x, -36.038_in}, {24.549_in*x, -39.086_in}),0.1_in);
-    const auto getSecondRing = chassis.generateProfile(new lib10478::CubicBezier({24.549_in*x, -39.086_in}, {50.574_in*x, -21.032_in}, {52.685_in*x, -12.356_in}, {40.961_in*x, -2.9777_in}),0.1_in);
-    const auto toWallStake = chassis.generateProfile(new lib10478::CubicBezier({40.961_in*x, -2.9777_in}, {57.960_in*x, -16.576_in}, {58.429_in*x, 0.53927_in}, {67.339_in*x, 0.53927_in}),0.1_in);
+    const auto getFirstRing = chassis.generateProfile(lib10478::CubicBezier({31.348_in*x, -23.376_in}, {38.441_in*x, -27.904_in}, {35.334_in*x, -36.038_in}, {24.549_in*x, -39.086_in}),0.1_in);
+    const auto getSecondRing = chassis.generateProfile(lib10478::CubicBezier({24.549_in*x, -39.086_in}, {50.574_in*x, -21.032_in}, {52.685_in*x, -12.356_in}, {40.961_in*x, -2.9777_in}),0.1_in);
+    const auto toWallStake = chassis.generateProfile(lib10478::CubicBezier({40.961_in*x, -2.9777_in}, {57.960_in*x, -16.576_in}, {58.429_in*x, 0.53927_in}, {67.339_in*x, 0.53927_in}),0.1_in);
 
 
     chassis.waitUntilSettled();

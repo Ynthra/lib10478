@@ -47,7 +47,7 @@ LinearVelocity Chassis::maxSpeed(Curvature curvature){
     return units::min(maxSlip,maxTurn);
 }
 
-Profile* Chassis::generateProfile(virtualPath *path, Length dd)
+Profile* Chassis::generateProfile(const virtualPath& path, Length dd)
 {
     Length dist = dd;
     LinearVelocity vel = 0_mps;
@@ -57,9 +57,9 @@ Profile* Chassis::generateProfile(virtualPath *path, Length dd)
 
     while (t <= 1)
     {
-        const units::V2Position point = path->getPoint(t);
-        const units::V2Position deriv = path->getDerivative(t);
-        const Curvature curvature = path->getCurvature(t);
+        const units::V2Position point = path.getPoint(t);
+        const units::V2Position deriv = path.getDerivative(t);
+        const Curvature curvature = path.getCurvature(t);
         
         t += dd.internal() / deriv.magnitude().internal();
 
@@ -95,6 +95,7 @@ std::pair<AngularVelocity, AngularVelocity> Chassis::toMotorSpeeds(ChassisSpeeds
 void Chassis::followProfile(Profile *profile, followParams params)
 {
     std::lock_guard<pros::Mutex> lock(mutex);
+    profile->prev = 0;
     currentProfile = profile;
     this->useRAMSETE = params.useRAMSETE;
     this->followReversed = params.followReversed;

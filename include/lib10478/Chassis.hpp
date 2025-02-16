@@ -55,7 +55,7 @@ public:
     lemlib::MotorGroup leftMotors;
     lemlib::MotorGroup rightMotors;
 
-    Profile* generateProfile(virtualPath *path, Length dd = 0.2_cm);
+    Profile* generateProfile(const virtualPath& path, Length dd = 0.2_cm);
     void followProfile(Profile *profile, followParams params = {});
     void CancelMovement();
     void waitUntilSettled();

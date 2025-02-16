@@ -29,7 +29,7 @@ CubicBezier::CubicBezier(const V2Position &p0, const V2Position &p1, const V2Pos
         -6, 18, -18, 6,
         6, -12, 6, 0;
 }
-V2Position CubicBezier::getPoint(double t)
+V2Position CubicBezier::getPoint(double t) const
 {
     Eigen::RowVector4d T;
     T << t * t * t, t * t, t, 1;
@@ -37,7 +37,7 @@ V2Position CubicBezier::getPoint(double t)
     return V2Position(from_m(result(0)), from_m(result(1)));
 }
 
-V2Position CubicBezier::getDerivative(double t)
+V2Position CubicBezier::getDerivative(double t) const
 {
     Eigen::RowVector3d T;
     T << t * t, t, 1;
@@ -45,7 +45,7 @@ V2Position CubicBezier::getDerivative(double t)
     return V2Position(from_m(result(0)), from_m(result(1)));
 }
 
-V2Position CubicBezier::getSecondDerivative(double t)
+V2Position CubicBezier::getSecondDerivative(double t) const
 {
     Eigen::RowVector2d T;
     T << t, 1;
@@ -53,7 +53,7 @@ V2Position CubicBezier::getSecondDerivative(double t)
     return V2Position(from_m(result(0)), from_m(result(1)));
 }
 
-Curvature CubicBezier::getCurvature(double t)
+Curvature CubicBezier::getCurvature(double t) const
 {
     V2Position d = this->getDerivative(t);
     V2Position dd = this->getSecondDerivative(t);
@@ -67,28 +67,28 @@ Spline::Spline(std::vector<virtualPath>* paths)
 : paths(paths)
 {}
 
-units::V2Position Spline::getPoint(double t)
+units::V2Position Spline::getPoint(double t) const
 {
     auto [index, tIndex] = convertT(t);
     return paths->at(index).getPoint(tIndex);
 }
-units::V2Position Spline::getDerivative(double t)
+units::V2Position Spline::getDerivative(double t) const
 {
     auto [index, tIndex] = convertT(t);
     return paths->at(index).getDerivative(tIndex);
 }
-units::V2Position Spline::getSecondDerivative(double t)
+units::V2Position Spline::getSecondDerivative(double t) const
 {
     auto [index, tIndex] = convertT(t);
     return paths->at(index).getSecondDerivative(tIndex);
 }
-Curvature Spline::getCurvature(double t)
+Curvature Spline::getCurvature(double t) const
 {
     auto [index, tIndex] = convertT(t);
     return paths->at(index).getCurvature(tIndex);
 }
 
-std::pair<int,double> Spline::convertT(double t)
+std::pair<int,double> Spline::convertT(double t) const
 {
     t *= paths->size();
     if(t < 0) return {0,0};

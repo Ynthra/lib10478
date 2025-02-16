@@ -9,10 +9,10 @@ namespace lib10478{
 class virtualPath
 {
 public:
-    virtual units::V2Position getPoint(double t) = 0;
-    virtual units::V2Position getDerivative(double t) = 0;
-    virtual units::V2Position getSecondDerivative(double t) = 0;
-    virtual Curvature getCurvature(double t) = 0;
+    virtual units::V2Position getPoint(double t) const = 0;
+    virtual units::V2Position getDerivative(double t) const = 0;
+    virtual units::V2Position getSecondDerivative(double t) const = 0;
+    virtual Curvature getCurvature(double t) const = 0;
 };
 
 class CubicBezier : public virtualPath
@@ -20,10 +20,10 @@ class CubicBezier : public virtualPath
 public:
     CubicBezier(const units::V2Position& p0, const units::V2Position& p1, const units::V2Position& p2, const units::V2Position& p3);
 
-    units::V2Position getPoint(double t);
-    units::V2Position getDerivative(double t);
-    units::V2Position getSecondDerivative(double t);
-    Curvature getCurvature(double t);
+    units::V2Position getPoint(double t) const;
+    units::V2Position getDerivative(double t) const;
+    units::V2Position getSecondDerivative(double t) const;
+    Curvature getCurvature(double t) const;
 
 private:
     // 2x4 matrix of control points in metres
@@ -39,13 +39,13 @@ class Spline : public virtualPath
 public:
     Spline(std::vector<virtualPath>* paths);
 
-    units::V2Position getPoint(double t);
-    units::V2Position getDerivative(double t);
-    units::V2Position getSecondDerivative(double t);
-    Curvature getCurvature(double t);
+    units::V2Position getPoint(double t) const;
+    units::V2Position getDerivative(double t) const;
+    units::V2Position getSecondDerivative(double t) const;
+    Curvature getCurvature(double t) const;
 private:
     std::vector<virtualPath>* paths;
-    std::pair<int,double> convertT(double t);
+    std::pair<int,double> convertT(double t) const;
 };
 
 } //namespace lib10478
