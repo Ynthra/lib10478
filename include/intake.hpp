@@ -1,4 +1,5 @@
 #pragma once
+#include "lib10478/controller.hpp"
 #include "units/units.hpp"
 
 enum ringColors{
@@ -17,7 +18,5 @@ enum intakeStates{
 
 inline Number intakeMaxSpeed = 1;
 extern ringColors getColor();
-extern void spinIntake();
-extern void stopIntake();
-extern void intakeInit(); 
-extern void outTake();
+extern void intakeLoop(bool spin);
+extern void waitUntilStored(int timeout = 0);

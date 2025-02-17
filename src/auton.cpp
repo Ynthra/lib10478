@@ -10,7 +10,7 @@
 constexpr int x = (TEAMCOLOR == BLUE)-(TEAMCOLOR == RED);
 void solowp(){
     const auto getGoal = chassis.generateProfile(lib10478::CubicBezier({56.436_in*x, -30.293_in}, {50.106_in*x, -30.293_in},{42.251_in*x, -29.355_in},{31.231_in*x, -22.321_in}),0.1_in);
-
+    
     chassis.setPose({56.436_in*x, -30.293_in,from_cDeg(90*x)});
 
     chassis.followProfile(getGoal,{.useRAMSETE= true,.followReversed = true});
@@ -23,7 +23,7 @@ void solowp(){
     clamp.retract(); //collect goal
     pros::delay(10);
     intakeMaxSpeed = 0.8;
-    spinIntake();
+    //spinIntake();
     chassis.followProfile(getFirstRing,{.useRAMSETE=true});
     chassis.waitUntilSettled();
     pros::delay(300);
@@ -34,16 +34,16 @@ void solowp(){
     intakePiston.extend(); //lift intake
     pros::delay(200);
     clamp.extend(); //drop goal
-    stopIntake();
+    //stopIntake();
     pros::delay(50);
     intakeMaxSpeed = 1;
-    spinIntake();
+    //spinIntake();
     chassis.waitUntilSettled();
     intakePiston.retract(); //drop it
     int time = 0;
     bool found = true;
     while (optical.get_proximity() < 240 || getColor() != TEAMCOLOR) {
-        spinIntake();
+        //spinIntake();
         pros::delay(10);
         time += 10;
         if(time > 1000) {
@@ -51,14 +51,14 @@ void solowp(){
             break;
         }
     }
-    stopIntake();
+    //stopIntake();
     pros::delay(300);
     chassis.followProfile(toWallStake,{.useRAMSETE=true,.followReversed=true});
     chassis.waitUntilSettled();
     pros::delay(100);
-    if(found) spinIntake();
+    //if(found) spinIntake();
     pros::delay(500);
-    stopIntake();
+    //stopIntake();
     chassis.tank(1,1);
     pros::delay(400);
     chassis.tank(0, 0);

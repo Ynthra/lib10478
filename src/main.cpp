@@ -26,7 +26,7 @@ void initialize()
 	optical.set_integration_time(20);
 
 	chassis.init();
-	intakeInit();
+	//intakeInit();
 	pros::Task screenTask([&]() {
 	SimpleMovingAverage intakePowSMA(20);
 	while (true) {
@@ -47,28 +47,27 @@ void disabled() {}
 void competition_initialize() {}
 
 void autonomous() {
-	skillsBack();
+	const auto testauton = chassis.generateProfile(
+		lib10478::Spline({new lib10478::CubicBezier({57.954106_in, 24.270531_in}, {33.799517_in, 24.753623_in}, {39.596618_in, 35.623188_in}, {23.896135_in, 35.623188_in}),
+						  new lib10478::CubicBezier({23.896135_in, 35.623188_in}, {8.195652_in, 35.623188_in}, {15.200483_in, 46.975845_in}, {-0.500000_in, 46.975845_in})
+						})
+	);
+	chassis.setPose({57.954106_in, 24.270531_in,-90_cDeg});
+	chassis.followProfile(testauton);
+	chassis.waitUntilSettled();
+	pros::delay(100);
+	/**skillsBack();
 	controller::master.set_text(0,0,"finished auto");
-	pros::delay(5000);
+	pros::delay(5000);**/
 }
 
 bool usedIntake = false;
-void intakeControl(controller::Button button, controller::Button outButton){
+void intakeControl(controller::Button button){
 	usedIntake = button.releasedTimer < 13000;
 	if(button.pressed && intakePiston.is_extended()){
 		intakePiston.retract();
 	}
-	if(button.pressing){
-		spinIntake();
-	}
-	else if(outButton.pressing){
-		outTake();
-	}
-	if(button.released || outButton.released){
-		stopIntake();
-	}
-	
-	
+	intakeLoop(button.pressing);
 }
 
 enum lbTargets{
@@ -140,6 +139,7 @@ void opcontrol()
 		startedDriver = true;
 
 	}
+	//waitUntilStored(20000);
 	while (true) {
 		controller::update();
 		if(controller::X.pressed){
@@ -167,14 +167,14 @@ void opcontrol()
 						1, 8, 127, 0.1, 1));
 		
 		if (driver == ADE) {
-			intakeControl(controller::L1, controller::Down);
+			intakeControl(controller::L1);
 			armControl(controller::L2);
 			clampControl(controller::R1);
 			doinkerControl(controller::R2);
 			intakePistonControl(controller::Up);
 		}
 		if(driver == DARIUS){
-			intakeControl(controller::L1, controller::Down);
+			intakeControl(controller::L1);
 			armControl(controller::R2);
 			clampControl(controller::R1);
 			doinkerControl(controller::L2);

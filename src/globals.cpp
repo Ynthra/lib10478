@@ -22,6 +22,6 @@ pros::adi::Pneumatics clamp('a',true);
 pros::adi::Pneumatics intakePiston('c',false);
 pros::adi::Pneumatics doinker('b',false);
 
-pros::Optical optical(17);
+pros::Optical optical(10);
 lemlib::V5RotationSensor armSensor(1);
 lib10478::PID armPID(12,0,20,0,false);
