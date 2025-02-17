@@ -22,6 +22,15 @@
 
 void initialize() 
 { 
+	auto testProfile = chassis.generateProfile(lib10478::Spline({new lib10478::CubicBezier({24.565217_in, -0.891304_in}, {68.478261_in, -0.891304_in}, {86.956522_in, 43.891304_in}, {23.478261_in, 44.108696_in}),
+					new lib10478::CubicBezier({23.478261_in, 44.108696_in}, {-40.000000_in, 44.326087_in}, {-70.217391_in, -40.456522_in}, {-25.000000_in, -40.891304_in}),
+					new lib10478::CubicBezier({-25.000000_in, -40.891304_in}, {20.217391_in, -41.326087_in}, {23.043478_in, -64.586957_in}, {23.695652_in, -23.717391_in})
+					}));
+	for (Length d = 0_m; d < testProfile->getLength(); d += testProfile->dd){
+		const units::Pose pose = testProfile->getProfilePoint(d).pose;
+		std::cout << pose.x.convert(in) << "," << pose.y.convert(in) << "," << to_stDeg(pose.orientation) << "\n";
+	}
+	delete testProfile;
 	optical.set_led_pwm(100);
 	optical.set_integration_time(20);
 
@@ -39,7 +48,7 @@ void initialize()
 
 		pros::delay(50);
 	}
-});
+	});
 }
 
 void disabled() {}
@@ -47,15 +56,6 @@ void disabled() {}
 void competition_initialize() {}
 
 void autonomous() {
-	const auto testauton = chassis.generateProfile(
-		lib10478::Spline({new lib10478::CubicBezier({57.954106_in, 24.270531_in}, {33.799517_in, 24.753623_in}, {39.596618_in, 35.623188_in}, {23.896135_in, 35.623188_in}),
-						  new lib10478::CubicBezier({23.896135_in, 35.623188_in}, {8.195652_in, 35.623188_in}, {15.200483_in, 46.975845_in}, {-0.500000_in, 46.975845_in})
-						})
-	);
-	chassis.setPose({57.954106_in, 24.270531_in,-90_cDeg});
-	chassis.followProfile(testauton);
-	chassis.waitUntilSettled();
-	pros::delay(100);
 	/**skillsBack();
 	controller::master.set_text(0,0,"finished auto");
 	pros::delay(5000);**/
@@ -70,13 +70,6 @@ void intakeControl(controller::Button button){
 	intakeLoop(button.pressing);
 }
 
-enum lbTargets{
-	DOWN = -119,
-	ALLIGNED = -77,
-	RAISED = -60,
-	SCORING = 52
-};
-lbTargets lbtarget = DOWN;
 
 void armControl(controller::Button button){
 	if (button.pressed && lbtarget == DOWN) {

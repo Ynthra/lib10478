@@ -25,7 +25,7 @@ bool storeRing = false;
 bool prevSpin = false;
 void intakeLoop(bool spin){
 	const bool isStationary = pros::c::motor_get_actual_velocity(intake.getPort()) < 0.001;
-	const bool atTarget = (intakeAngle - intake.getAngle()) < 1_stDeg;
+	const bool atTarget = (intakeAngle - intake.getAngle()) < 0.5_stDeg;
 	const bool pastTarget = intake.getAngle() > intakeAngle;
 	if((detectedColor == NONE) && optical.is_installed() && optical.get_proximity() > 240) {
 		detectedColor = getColor();
@@ -75,7 +75,12 @@ void intakeLoop(bool spin){
 		intake.move(100_percent);
 	}
 	if(!spin && prevSpin){
-		intakeAngle = from_stDeg(roundUpToNearestMultiple(to_stDeg(intake.getAngle() - from_stDeg(NEXTTOOTH) * 0.4), NEXTTOOTH,0) + NEXTTOOTH * 0.4);
+		if(lbtarget == ALLIGNED){
+			intakeAngle = from_stDeg(roundUpToNearestMultiple(to_stDeg(intake.getAngle() - from_stDeg(NEXTTOOTH) * 0.74), NEXTTOOTH,0) + NEXTTOOTH * 0.74);
+		}
+		else{
+			intakeAngle = from_stDeg(roundUpToNearestMultiple(to_stDeg(intake.getAngle() - from_stDeg(NEXTTOOTH) * 0.4), NEXTTOOTH,0) + NEXTTOOTH * 0.4);
+		}
 		pros::c::motor_move_absolute(intake.getPort(),to_stDeg(intakeAngle), 600);
 	}
 	if (!spin && atTarget && isStationary) {

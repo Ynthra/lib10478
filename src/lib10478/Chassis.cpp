@@ -178,8 +178,10 @@ ChassisSpeeds Chassis::RAMSETE(ChassisSpeeds speeds, units::Pose target, units::
 {
     const double zeta = 0.7;
     const double beta = 2;
-    const units::Pose localError = (target - current).rotatedBy(-current.orientation);
-
+    units::Pose localError = (target - current).rotatedBy(-current.orientation);
+    localError = {localError.x,localError.y,from_stRad(std::remainder(localError.orientation.internal(),2*M_PI))};
+    
+    
     // k = 2ζ√(ω² + b v²)
     const double k = 2.0 * zeta * std::sqrt(std::pow(speeds.ω.internal(), 2) + beta * std::pow(speeds.v.internal(), 2));
 
