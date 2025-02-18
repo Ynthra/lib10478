@@ -326,12 +326,13 @@ void Chassis::init() {
                     if(direction == CW) velocity = -velocity;
                     AngularVelocity motorVel = toAngular<LinearVelocity>(velocity,wheelDiameter);
                     
+                    motorSpeeds = {-motorVel,motorVel};
                     if(leftController == nullptr || rightController == nullptr){
-                        leftMotors.moveVelocity(-motorSpeeds.first);
+                        leftMotors.moveVelocity(motorSpeeds.first);
                         rightMotors.moveVelocity(motorSpeeds.second);
                     }
                     else{
-                        Number leftPower = -leftController->getPower(motorSpeeds.first,currentVelocity.first);
+                        Number leftPower = leftController->getPower(motorSpeeds.first,currentVelocity.first);
                         Number rightPower = rightController->getPower(motorSpeeds.second,currentVelocity.second);
                         const Number maxPower = std::max(leftPower,rightPower);
                         if(maxPower > 1_num){
