@@ -1,10 +1,14 @@
 #pragma once
+#include "lib10478/Odom.hpp"
 #include "lib10478/PID.hpp"
 #include "lib10478/lib10478.hpp"
 #include "hardware/Encoder/V5RotationSensor.hpp"
 #include "hardware/IMU/V5InertialSensor.hpp"
 
 extern lib10478::Chassis chassis;
+
+extern lemlib::V5RotationSensor wheelSensor;
+extern lib10478::TrackingWheel horizontalWheel;
 
 extern lemlib::Motor intake;
 extern pros::Motor arm;

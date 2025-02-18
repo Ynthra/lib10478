@@ -6,6 +6,7 @@
 #include "units/Angle.hpp"
 #include "hardware/Motor/MotorGroup.hpp"
 #include <atomic>
+#include <concepts>
 #include <utility>
 #include "bezier.hpp"
 #include "Profile.hpp"
@@ -23,10 +24,6 @@ struct Constraints
     Number frictionCoefficent;
 };
 
-enum class ChassisState{
-    IDLE, FOLLOW, TURN
-};
-
 struct ChassisSpeeds{
     AngularVelocity ω;
     LinearVelocity v;
@@ -38,6 +35,15 @@ struct followParams
     bool followReversed = false;
 };
 
+enum turnDirection{
+    CW = -1,
+    CCW = 1,
+    AUTO = 0
+};
+
+enum class ChassisState{
+    IDLE, FOLLOW, TURN
+};
 // forward declare
 template class StateMachine<ChassisState,ChassisState::IDLE>;
 
@@ -50,13 +56,15 @@ public:
             lemlib::IMU* imu,
             AngularVelocity outputVelocity,
             Length wheelDiameter, Constraints constraints, 
-            VelocityController* leftController, VelocityController* rightController);
+            VelocityController* leftController, VelocityController* rightController,
+            TrackingWheel* backTracker);
     
     lemlib::MotorGroup leftMotors;
     lemlib::MotorGroup rightMotors;
 
     Profile* generateProfile(const virtualPath& path, Length dd = 0.2_cm);
     void followProfile(Profile *profile, followParams params = {});
+    void turnTo(Angle angle, turnDirection direction = AUTO);
     void CancelMovement();
     void waitUntilSettled();
     void init();
@@ -72,16 +80,18 @@ public:
 private:
     Odom odom;
     lemlib::IMU* imu;
-    //TrackingWheel backTracker;
     pros::Task* task = nullptr;
     pros::Mutex mutex;
-    Profile *currentProfile;
+    Profile *currentProfile = nullptr;
     std::atomic<bool> useRAMSETE = false;
     std::atomic<bool> followReversed = false;
 
+    turnDirection direction;
+    Angle targetAngle = 0_stDeg;
     VelocityController* leftController;
     VelocityController* rightController;
 
+    Angle getError(Angle target, Angle curent, turnDirection direction);
     LinearVelocity maxSpeed(Curvature Curvature);
     ChassisSpeeds RAMSETE(ChassisSpeeds speeds, units::Pose target, units::Pose current);
     std::pair<AngularVelocity, AngularVelocity> toMotorSpeeds(ChassisSpeeds speeds);

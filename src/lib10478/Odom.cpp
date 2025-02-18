@@ -30,7 +30,9 @@ int TrackingWheel::reset() { return m_encoder->setAngle(0_stRad); }
 
 
 Odom::Odom(lemlib::IMU* imu, TrackingWheel* left, TrackingWheel* right, TrackingWheel* back)
-    : m_imu(imu), m_left(left), m_right(right), m_back(back) {}
+    : m_imu(imu), m_left(left), m_right(right), m_back(back) {
+        m_back->reset();
+    }
 
 units::Pose Odom::getPose()
 {
@@ -50,7 +52,7 @@ void Odom::update()
     std::lock_guard<pros::Mutex> lock (mutex);
     Angle angle = 0_stRad;
     if (m_imu->isConnected())
-        angle = -m_imu->getRotation() + 180_stDeg;
+        angle = m_imu->getRotation();
     else{
         angle = from_stRad((m_left->getDistance().internal() - m_right->getDistance().internal() ) / 
                             (m_left->getOffset().internal() - m_right->getOffset().internal())) + 90_stDeg;

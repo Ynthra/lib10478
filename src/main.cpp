@@ -22,18 +22,10 @@
 
 void initialize() 
 { 
-	auto testProfile = chassis.generateProfile(lib10478::Spline({new lib10478::CubicBezier({24.565217_in, -0.891304_in}, {68.478261_in, -0.891304_in}, {86.956522_in, 43.891304_in}, {23.478261_in, 44.108696_in}),
-					new lib10478::CubicBezier({23.478261_in, 44.108696_in}, {-40.000000_in, 44.326087_in}, {-70.217391_in, -40.456522_in}, {-25.000000_in, -40.891304_in}),
-					new lib10478::CubicBezier({-25.000000_in, -40.891304_in}, {20.217391_in, -41.326087_in}, {23.043478_in, -64.586957_in}, {23.695652_in, -23.717391_in})
-					}));
-	for (Length d = 0_m; d < testProfile->getLength(); d += testProfile->dd){
-		const units::Pose pose = testProfile->getProfilePoint(d).pose;
-		std::cout << pose.x.convert(in) << "," << pose.y.convert(in) << "," << to_stDeg(pose.orientation) << "\n";
-	}
-	delete testProfile;
 	optical.set_led_pwm(100);
 	optical.set_integration_time(20);
 
+	horizontalWheel.reset();
 	chassis.init();
 	//intakeInit();
 	pros::Task screenTask([&]() {
@@ -44,8 +36,12 @@ void initialize()
 		pros::screen::print(pros::E_TEXT_MEDIUM,1,("y: " + std::to_string(pose.y.convert(in))).c_str());
 		pros::screen::print(pros::E_TEXT_MEDIUM,2,("angle: " + std::to_string(to_cDeg(pose.orientation))).c_str());
 		pros::screen::print(pros::E_TEXT_MEDIUM,3,("intake power: " + std::to_string(intakePowSMA.next(pros::c::motor_get_power(intake.getPort())))).c_str());
-	
-
+		
+		
+		/**pros::screen::print(pros::E_TEXT_MEDIUM,0,("back dist: " + std::to_string(horizontalWheel.getDistance().convert(in))).c_str());
+		pros::screen::print(pros::E_TEXT_MEDIUM,1,("left dist: " + std::to_string(chassis.leftTracker.getDistance().convert(in))).c_str());
+		pros::screen::print(pros::E_TEXT_MEDIUM,2,("right dist: " + std::to_string(chassis.rightTracker.getDistance().convert(in))).c_str());
+		**/
 		pros::delay(50);
 	}
 	});
@@ -56,9 +52,9 @@ void disabled() {}
 void competition_initialize() {}
 
 void autonomous() {
-	/**skillsBack();
-	controller::master.set_text(0,0,"finished auto");
-	pros::delay(5000);**/
+	chassis.turnTo(-90_cDeg);
+	chassis.waitUntilSettled();
+	//skillsBack();
 }
 
 bool usedIntake = false;
@@ -76,6 +72,7 @@ void armControl(controller::Button button){
 		lbtarget = ALLIGNED;
 	}
 	if(button.released && lbtarget == ALLIGNED){
+		intake.move(0);
 		lbtarget = RAISED;
 	}
 	if(button.pressed && lbtarget == RAISED){
@@ -122,6 +119,7 @@ bool past45s = false;
 bool exitCorner = false;
 void opcontrol()
 {
+	std::cout << "hi \n";
 	pros::c::motor_set_encoder_units(intake.getPort(), pros::E_MOTOR_ENCODER_DEGREES);
 	pros::c::motor_set_gearing(intake.getPort(), pros::E_MOTOR_GEAR_600);
 	chassis.CancelMovement();
@@ -132,7 +130,6 @@ void opcontrol()
 		startedDriver = true;
 
 	}
-	//waitUntilStored(20000);
 	while (true) {
 		controller::update();
 		if(controller::X.pressed){

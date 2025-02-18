@@ -1,6 +1,7 @@
 #include "intake.hpp"
 #include "globals.hpp"
 #include "lib10478/controller.hpp"
+#include "pros/device.hpp"
 #include "pros/motors.h"
 #include "pros/rtos.hpp"
 #include "units/Angle.hpp"
@@ -23,16 +24,23 @@ bool stopped = false;
 Angle intakeAngle = 0_stDeg;
 bool storeRing = false;
 bool prevSpin = false;
+int settledTime = 0;
+int stoppedTime = 0;
 void intakeLoop(bool spin){
 	const bool isStationary = pros::c::motor_get_actual_velocity(intake.getPort()) < 0.001;
-	const bool atTarget = (intakeAngle - intake.getAngle()) < 0.5_stDeg;
+	const bool atTarget = (intakeAngle - intake.getAngle()) < 5_stDeg;
 	const bool pastTarget = intake.getAngle() > intakeAngle;
+	if (atTarget) settledTime += 10;
+	else settledTime = 0;
+	if(isStationary) stoppedTime+=10;
+	else stoppedTime = 0;
 	if((detectedColor == NONE) && optical.is_installed() && optical.get_proximity() > 240) {
 		detectedColor = getColor();
 		if ((detectedColor != NONE) && (detectedColor != TEAMCOLOR)){
 			sorting = true;
 			intakeAngle = from_stDeg(roundUpToNearestMultiple(to_stDeg(intake.getAngle()- from_stDeg(NEXTTOOTH) * 0.69), NEXTTOOTH, 0) + NEXTTOOTH * 0.69);
 			intake.move(100_percent);
+			stoppedTime = 0;
 		}	
 	}
 	if(sorting) {
@@ -53,7 +61,11 @@ void intakeLoop(bool spin){
 				sorting = false;
 				intakeAngle = from_stDeg(roundUpToNearestMultiple(to_stDeg(intake.getAngle() - from_stDeg(NEXTTOOTH) * 0.4), NEXTTOOTH,0) + NEXTTOOTH * 0.4);
 				pros::c::motor_move_absolute(intake.getPort(),to_stDeg(intakeAngle), 600);
-			
+				stoppedTime = 0;
+				if(storeRing) {
+					intake.move(100_percent);
+					return;
+				}
 			}
 			else {
 				return;
@@ -73,17 +85,19 @@ void intakeLoop(bool spin){
 	}
 	if(spin){
 		intake.move(100_percent);
+		stoppedTime = 0;
 	}
 	if(!spin && prevSpin){
 		if(lbtarget == ALLIGNED){
-			intakeAngle = from_stDeg(roundUpToNearestMultiple(to_stDeg(intake.getAngle() - from_stDeg(NEXTTOOTH) * 0.74), NEXTTOOTH,0) + NEXTTOOTH * 0.74);
+			intakeAngle = from_stDeg(roundUpToNearestMultiple(to_stDeg(intake.getAngle() - from_stDeg(NEXTTOOTH) * 0.73), NEXTTOOTH,0) + NEXTTOOTH * 0.73);
 		}
 		else{
 			intakeAngle = from_stDeg(roundUpToNearestMultiple(to_stDeg(intake.getAngle() - from_stDeg(NEXTTOOTH) * 0.4), NEXTTOOTH,0) + NEXTTOOTH * 0.4);
 		}
 		pros::c::motor_move_absolute(intake.getPort(),to_stDeg(intakeAngle), 600);
+		stoppedTime = 0;
 	}
-	if (!spin && atTarget && isStationary) {
+	if (!spin && ((settledTime > 200) && isStationary) || (stoppedTime > 300)) {
 		intake.move(0);
 	}
 	prevSpin = spin;
@@ -93,7 +107,9 @@ void waitUntilStored(int timeout){
 	if (timeout == 0) timeout = 60000;
 	storeRing = true;
 	auto now = pros::millis();
+	intake.move(100_percent);
 	while ((pros::millis() - now) < timeout && storeRing) {
 		intakeLoop(true);
+		pros::delay(10);
 	}
 } 
