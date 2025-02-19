@@ -139,14 +139,10 @@ int turnLoops;
 void Chassis::turnTo(Angle angle, turnDirection direction){
     std::lock_guard<pros::Mutex> lock(mutex);
     const units::Pose pose = odom.getPose();
-    std::cout << "started: "<<direction << "," << to_stDeg(getError(angle, pose.orientation, direction)) << "," << to_cDeg(angle) << ",";
-    Length distance = toLinear<Angle>(getError(angle, pose.orientation, direction),this->constraints.trackWidth);
+    const Length distance = toLinear<Angle>(getError(angle, pose.orientation, direction),this->constraints.trackWidth);
     this->direction = turnDirection(sgn(distance.internal()));
-    std::cout << this->direction << "," + std::to_string(pros::millis()/1000.0)<<"\n";
     this->targetAngle = angle;
-    if (distance.internal() < 0) distance = -distance;
     currentProfile = this->generateProfile(CubicBezier({0_m,0_m},{0_m,0.33*distance},{0_m,0.66*distance},{0_m,distance}));
-    turnLoops = 0;
     setState(ChassisState::TURN);
 }
 
@@ -334,22 +330,14 @@ void Chassis::init() {
                 
                 case ChassisState::TURN:
                     units::Pose currentPose = odom.getPose();
-                    const Angle angularError = getError(this->targetAngle,currentPose.orientation,AUTO);
+                    const Angle angularError = getError(this->targetAngle,currentPose.orientation,this->direction);
                     const Length d = currentProfile->getLength() - this->direction*toLinear<Angle>(
                                 angularError, this->constraints.trackWidth);
-                    std::cout << d.convert(in) << "\n";
 
                     if (currentProfile == nullptr) break;
-                    const auto point = currentProfile->getProfilePoint(d);
-                    const auto firstPoint = currentProfile->profile.front();
-                    LinearVelocity velocity = point.velocity;
-                    if (point != firstPoint) {
-                        turnLoops++;
-                    }
-                    //(turnLoops > 5 && point == firstPoint) || (point == currentProfile->profile.back())
-                    if (units::abs(getError(this->targetAngle,currentPose.orientation,AUTO)) < 1_stDeg) {
-                        controller::master.rumble(".");
-                        std::cout<< "finished: " << to_stDeg(angularError) << "," <<turnLoops << "," << point.pose.y.convert(in) << "," << currentProfile->getLength().convert(in) <<"," + std::to_string(pros::millis()/1000.0)<< "\n";
+                    LinearVelocity velocity = currentProfile->getProfilePoint(d).velocity;
+
+                    if (units::abs(angularError) > 350_stDeg) {
                         delete currentProfile;
                         setState(ChassisState::IDLE);
                         tank(0_percent,0_percent);
