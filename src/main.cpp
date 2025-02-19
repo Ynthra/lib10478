@@ -1,6 +1,7 @@
 #include "main.h"
 #include "auton.hpp"
 #include "intake.hpp"
+#include "lib10478/Chassis.hpp"
 #include "lib10478/Math.hpp"
 #include "lib10478/bezier.hpp"
 #include "lib10478/lib10478.hpp"
@@ -28,6 +29,30 @@ void initialize()
 	horizontalWheel.reset();
 	chassis.init();
 	//intakeInit();
+
+	std::cout << to_stDeg(chassis.getError(-90_cDeg, 0_cDeg,lib10478::AUTO)) << ", " 
+			  << to_stDeg(chassis.getError(-90_cDeg, 0_cDeg,lib10478::CW)) << ", " 
+			  << to_stDeg(chassis.getError(-90_cDeg, 0_cDeg,lib10478::CCW)) << "\n"
+
+			  << to_stDeg(chassis.getError(-90_cDeg, -360_cDeg,lib10478::AUTO)) << ", " 
+			  << to_stDeg(chassis.getError(-90_cDeg, -360_cDeg,lib10478::CW)) << ", " 
+			  << to_stDeg(chassis.getError(-90_cDeg, -360_cDeg,lib10478::CCW)) << "\n" 
+
+			  << to_stDeg(chassis.getError(-90_cDeg, 360_cDeg,lib10478::AUTO)) << ", " 
+			  << to_stDeg(chassis.getError(-90_cDeg, 360_cDeg,lib10478::CW)) << ", " 
+			  << to_stDeg(chassis.getError(-90_cDeg, 360_cDeg,lib10478::CCW)) << "\n"
+
+			  << to_stDeg(chassis.getError(-90_cDeg, -720_cDeg,lib10478::AUTO)) << ", " 
+			  << to_stDeg(chassis.getError(-90_cDeg, -720_cDeg,lib10478::CW)) << ", " 
+			  << to_stDeg(chassis.getError(-90_cDeg, -720_cDeg,lib10478::CCW)) << "\n" 
+
+			  << to_stDeg(chassis.getError(-90_cDeg, 720_cDeg,lib10478::AUTO)) << ", " 
+			  << to_stDeg(chassis.getError(-90_cDeg, 720_cDeg,lib10478::CW)) << ", " 
+			  << to_stDeg(chassis.getError(-90_cDeg, 720_cDeg,lib10478::CCW)) << "\n"
+			  
+			  
+			  ;
+
 	pros::Task screenTask([&]() {
 	SimpleMovingAverage intakePowSMA(20);
 	while (true) {
@@ -52,8 +77,28 @@ void disabled() {}
 void competition_initialize() {}
 
 void autonomous() {
-	chassis.turnTo(-90_cDeg);
+	//chassis.setPose({0_m,0_m,360_cDeg});
+	//chassis.turnTo(-90_cDeg);
+	//chassis.waitUntilSettled();
+	
+	/**chassis.turnTo(90_cDeg);
 	chassis.waitUntilSettled();
+	chassis.turnTo(0_cDeg);
+	chassis.waitUntilSettled();
+	chassis.turnTo(-170_cDeg);
+	chassis.waitUntilSettled();
+	chassis.turnTo(90_cDeg);
+	chassis.waitUntilSettled();
+	chassis.turnTo(0_cDeg,lib10478::CW);
+	chassis.waitUntilSettled();
+	chassis.turnTo(-45_cDeg);
+	chassis.waitUntilSettled();
+	chassis.turnTo(0_cDeg);
+	chassis.waitUntilSettled();
+	chassis.turnTo(90_cDeg,lib10478::CCW);
+	chassis.waitUntilSettled();
+	chassis.turnTo(0_cDeg);
+	chassis.waitUntilSettled();**/
 	//skillsBack();
 }
 

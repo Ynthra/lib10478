@@ -105,25 +105,48 @@ void Chassis::followProfile(Profile *profile, followParams params)
     setState(ChassisState::FOLLOW);
 }
 
+constexpr Angle sanitizeAngle(Angle angle) {
+    return units::mod(units::mod(angle, 1_stRot) + 1_stRot, 1_stRot);
+}
+Angle angleError(Angle target, Angle position, turnDirection direction) {
+    // bound angles from 0 to 2pi or 0 to 360
+    target = sanitizeAngle(target);
+    target = sanitizeAngle(target);
+    const Angle max = 1_stRot;
+    const Angle rawError = target - position;
+    switch (direction) {
+        case lib10478::CW: // turn clockwise
+            if(rawError.internal() < 0) return rawError + max;
+            else return rawError;// add max if sign does not match
+        case lib10478::CCW: // turn counter-clockwise
+            if(rawError.internal() > 0) return rawError - max;
+            else return rawError;// ad // subtract max if sign does not match
+        default: // choose the shortest path
+            return units::remainder(rawError, max);
+    }
+}
 Angle Chassis::getError(Angle target, Angle position, turnDirection direction) {
     // Wrap the angle to be within 0pi and 2pi radians
     target = units::mod(units::mod(target, 1_stRot) + 1_stRot, 1_stRot);
+    position = units::mod(units::mod(position, 1_stRot) + 1_stRot, 1_stRot);
 
     Angle error = target - position;
-    if (!direction) return from_stDeg(std::remainder(to_stDeg(error), 360));
+    if (direction == AUTO) return from_stDeg(std::remainder(to_stDeg(error), 360));
     if (direction == CCW) return error < 0_stRot ? error + 1_stRot : error;
     else return error > 0_stRot ? error - 1_stRot : error;
 }
-
+int turnLoops;
 void Chassis::turnTo(Angle angle, turnDirection direction){
     std::lock_guard<pros::Mutex> lock(mutex);
     const units::Pose pose = odom.getPose();
+    std::cout << "started: "<<direction << "," << to_stDeg(getError(angle, pose.orientation, direction)) << "," << to_cDeg(angle) << ",";
     Length distance = toLinear<Angle>(getError(angle, pose.orientation, direction),this->constraints.trackWidth);
     this->direction = turnDirection(sgn(distance.internal()));
+    std::cout << this->direction << "," + std::to_string(pros::millis()/1000.0)<<"\n";
     this->targetAngle = angle;
     if (distance.internal() < 0) distance = -distance;
     currentProfile = this->generateProfile(CubicBezier({0_m,0_m},{0_m,0.33*distance},{0_m,0.66*distance},{0_m,distance}));
-    
+    turnLoops = 0;
     setState(ChassisState::TURN);
 }
 
@@ -135,8 +158,9 @@ void Chassis::CancelMovement()
 }
 void Chassis::waitUntilSettled()
 {
+    auto now = pros::millis();
     while (getState() != ChassisState::IDLE) {
-        pros::delay(10);
+        pros::Task::delay_until(&now, 10);
     }
 }
 void Chassis::setPose(units::Pose pose){
@@ -309,21 +333,29 @@ void Chassis::init() {
                 }
                 
                 case ChassisState::TURN:
-                    loops++;
                     units::Pose currentPose = odom.getPose();
-                    const Length d = currentProfile->getLength() - units::abs(toLinear<Angle>(
-                                getError(this->targetAngle,currentPose.orientation,this->direction)
-                                ,this->constraints.trackWidth));
+                    const Angle angularError = getError(this->targetAngle,currentPose.orientation,AUTO);
+                    const Length d = currentProfile->getLength() - this->direction*toLinear<Angle>(
+                                angularError, this->constraints.trackWidth);
+                    std::cout << d.convert(in) << "\n";
 
-                    if (d >= currentProfile->getLength()) {
+                    if (currentProfile == nullptr) break;
+                    const auto point = currentProfile->getProfilePoint(d);
+                    const auto firstPoint = currentProfile->profile.front();
+                    LinearVelocity velocity = point.velocity;
+                    if (point != firstPoint) {
+                        turnLoops++;
+                    }
+                    //(turnLoops > 5 && point == firstPoint) || (point == currentProfile->profile.back())
+                    if (units::abs(getError(this->targetAngle,currentPose.orientation,AUTO)) < 1_stDeg) {
+                        controller::master.rumble(".");
+                        std::cout<< "finished: " << to_stDeg(angularError) << "," <<turnLoops << "," << point.pose.y.convert(in) << "," << currentProfile->getLength().convert(in) <<"," + std::to_string(pros::millis()/1000.0)<< "\n";
+                        delete currentProfile;
                         setState(ChassisState::IDLE);
                         tank(0_percent,0_percent);
                         break;
                     }
-                    if (currentProfile == nullptr) break;
-                    LinearVelocity velocity = currentProfile->getProfilePoint(d).velocity;
-                    
-                    if(direction == CW) velocity = -velocity;
+                    if(this->direction == CW) velocity = -velocity;
                     AngularVelocity motorVel = toAngular<LinearVelocity>(velocity,wheelDiameter);
                     
                     motorSpeeds = {-motorVel,motorVel};

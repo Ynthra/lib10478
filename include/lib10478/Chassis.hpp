@@ -75,6 +75,7 @@ public:
     void findWidth(Angle rotations);
     void findDiameter(Length distance);
 
+    Angle getError(Angle target, Angle curent, turnDirection direction);
     TrackingWheel rightTracker;
     TrackingWheel leftTracker;
 private:
@@ -91,7 +92,6 @@ private:
     VelocityController* leftController;
     VelocityController* rightController;
 
-    Angle getError(Angle target, Angle curent, turnDirection direction);
     LinearVelocity maxSpeed(Curvature Curvature);
     ChassisSpeeds RAMSETE(ChassisSpeeds speeds, units::Pose target, units::Pose current);
     std::pair<AngularVelocity, AngularVelocity> toMotorSpeeds(ChassisSpeeds speeds);
