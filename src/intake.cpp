@@ -74,7 +74,7 @@ void intakeLoop(bool spin){
 	}
 	if (storeRing) {
 		if (detectedColor == TEAMCOLOR) {
-			pros::c::motor_move_relative(intake.getPort(), 0, 600);
+			pros::c::motor_move_relative(intake.getPort(), 0, 100);
 			storeRing = false;
 			detectedColor = NONE;	
 		}

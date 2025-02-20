@@ -514,7 +514,7 @@
       }
     },
     "upload_options": {
-      "after": "run",
+      "after": "screen",
       "description": "Shoutout to John Queen",
       "icon": "clawbot",
       "slot": 3

@@ -29,4 +29,4 @@ enum lbTargets{
 };
 inline lbTargets lbtarget = DOWN;
 
-#define TEAMCOLOR RED
+#define TEAMCOLOR BLUE

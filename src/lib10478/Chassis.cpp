@@ -331,22 +331,25 @@ void Chassis::init() {
                 case ChassisState::TURN:
                     units::Pose currentPose = odom.getPose();
                     const Angle angularError = getError(this->targetAngle,currentPose.orientation,this->direction);
-                    const Length d = currentProfile->getLength() - this->direction*toLinear<Angle>(
-                                angularError, this->constraints.trackWidth);
-
-                    if (currentProfile == nullptr) break;
-                    LinearVelocity velocity = currentProfile->getProfilePoint(d).velocity;
-
-                    if (units::abs(angularError) > 350_stDeg) {
+                    
+                    if (units::abs(angularError) > 350_stDeg || units::abs(angularError) < 0.2_stDeg) {
                         delete currentProfile;
                         setState(ChassisState::IDLE);
                         tank(0_percent,0_percent);
                         break;
                     }
+
+                    const Length d = currentProfile->getLength() - this->direction*toLinear<Angle>(
+                                angularError, this->constraints.trackWidth);
+                    
+                    if (currentProfile == nullptr) break;
+                    LinearVelocity velocity = currentProfile->getProfilePoint(d).velocity;
+
+
                     if(this->direction == CW) velocity = -velocity;
                     AngularVelocity motorVel = toAngular<LinearVelocity>(velocity,wheelDiameter);
                     
-                    motorSpeeds = {-motorVel,motorVel};
+                    motorSpeeds = {-motorVel,motorVel}; //turns counterclockwise
                     if(leftController == nullptr || rightController == nullptr){
                         leftMotors.moveVelocity(motorSpeeds.first);
                         rightMotors.moveVelocity(motorSpeeds.second);

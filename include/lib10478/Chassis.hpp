@@ -31,7 +31,7 @@ struct ChassisSpeeds{
 
 struct followParams
 {
-    bool useRAMSETE = false;
+    bool useRAMSETE = true;
     bool followReversed = false;
 };
 

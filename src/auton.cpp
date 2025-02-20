@@ -80,3 +80,44 @@ void skillsBack(){
     clamp.toggle();
     chassis.tank(-0.8, -0.8);
 }
+
+void trueSoloWP(){
+
+
+    chassis.setPose({55.5_in, -30.797_in,90_cDeg});
+    auto getGoal = chassis.generateProfile(
+        lib10478::CubicBezier({55.500000_in, -30.797000_in}, {40.000000_in, -30.797000_in}, {40.828779_in, -31.742836_in}, {31.407394_in, -26.665220_in})
+    );
+    chassis.followProfile(getGoal,{.followReversed=true});
+    auto getFirstRing = chassis.generateProfile(
+        lib10478::CubicBezier({31.407394_in, -26.665220_in}, {41.596816_in, -32.155647_in}, {33.493868_in, -37.388440_in}, {24.538464_in, -41.897455_in})
+    );
+    chassis.waitUntilSettled(); delete getGoal;
+    clamp.retract(); //clamp goal
+    pros::delay(200);
+    intakeLoop(true);
+    chassis.followProfile(getFirstRing);
+    auto getSecondRing = chassis.generateProfile(
+        lib10478::CubicBezier({24.538464_in, -41.897455_in}, {41.901697_in, -21.733053_in}, {59.533795_in, -23.554333_in}, {44.336412_in, -4.310309_in})
+    );
+    chassis.waitUntilSettled(); delete getFirstRing;
+    pros::delay(200);
+    chassis.turnTo(45_cDeg);
+    chassis.waitUntilSettled();
+    intakeLoop(false);
+    clamp.extend(); //drop goal
+    chassis.followProfile(getSecondRing);
+    auto toWallstake = chassis.generateProfile(
+        lib10478::CubicBezier({44.336412_in, -4.310309_in}, {52.389743_in, -14.435225_in}, {47.530135_in, 3.014085_in}, {58.625023_in, 3.249148_in})
+    );
+    pros::delay(200);
+    intakePiston.extend(); //lift intake
+    intakeLoop(true);
+    chassis.waitUntilSettled(); delete getSecondRing;
+    intakePiston.retract(); //drop intake
+    pros::delay(200);
+    clamp.retract(); //drop clap (to help allign)
+    chassis.followProfile(toWallstake,{.followReversed = true});
+    waitUntilStored();
+    chassis.waitUntilSettled(); delete toWallstake;
+}

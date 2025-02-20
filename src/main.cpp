@@ -17,41 +17,23 @@
 #include "units/Pose.hpp"
 #include "units/units.hpp"
 #include <cmath>
+#include <iterator>
 #include <string>
 #include <sys/_intsup.h>
 #include <vector>
 
 void initialize() 
 { 
+	pros::delay(100);
+
 	optical.set_led_pwm(100);
 	optical.set_integration_time(20);
 
+	pros::c::motor_set_encoder_units(intake.getPort(), pros::E_MOTOR_ENCODER_DEGREES);
+	pros::c::motor_set_gearing(intake.getPort(), pros::E_MOTOR_GEAR_600);
+
 	horizontalWheel.reset();
 	chassis.init();
-	//intakeInit();
-
-	std::cout << to_stDeg(chassis.getError(-90_cDeg, 0_cDeg,lib10478::AUTO)) << ", " 
-			  << to_stDeg(chassis.getError(-90_cDeg, 0_cDeg,lib10478::CW)) << ", " 
-			  << to_stDeg(chassis.getError(-90_cDeg, 0_cDeg,lib10478::CCW)) << "\n"
-
-			  << to_stDeg(chassis.getError(-90_cDeg, -360_cDeg,lib10478::AUTO)) << ", " 
-			  << to_stDeg(chassis.getError(-90_cDeg, -360_cDeg,lib10478::CW)) << ", " 
-			  << to_stDeg(chassis.getError(-90_cDeg, -360_cDeg,lib10478::CCW)) << "\n" 
-
-			  << to_stDeg(chassis.getError(-90_cDeg, 360_cDeg,lib10478::AUTO)) << ", " 
-			  << to_stDeg(chassis.getError(-90_cDeg, 360_cDeg,lib10478::CW)) << ", " 
-			  << to_stDeg(chassis.getError(-90_cDeg, 360_cDeg,lib10478::CCW)) << "\n"
-
-			  << to_stDeg(chassis.getError(-90_cDeg, -720_cDeg,lib10478::AUTO)) << ", " 
-			  << to_stDeg(chassis.getError(-90_cDeg, -720_cDeg,lib10478::CW)) << ", " 
-			  << to_stDeg(chassis.getError(-90_cDeg, -720_cDeg,lib10478::CCW)) << "\n" 
-
-			  << to_stDeg(chassis.getError(-90_cDeg, 720_cDeg,lib10478::AUTO)) << ", " 
-			  << to_stDeg(chassis.getError(-90_cDeg, 720_cDeg,lib10478::CW)) << ", " 
-			  << to_stDeg(chassis.getError(-90_cDeg, 720_cDeg,lib10478::CCW)) << "\n"
-			  
-			  
-			  ;
 
 	pros::Task screenTask([&]() {
 	SimpleMovingAverage intakePowSMA(20);
@@ -62,9 +44,9 @@ void initialize()
 		pros::screen::print(pros::E_TEXT_MEDIUM,2,("angle: " + std::to_string(to_cDeg(pose.orientation))).c_str());
 		pros::screen::print(pros::E_TEXT_MEDIUM,3,("intake power: " + std::to_string(intakePowSMA.next(pros::c::motor_get_power(intake.getPort())))).c_str());
 		
-		
-		/**pros::screen::print(pros::E_TEXT_MEDIUM,0,("back dist: " + std::to_string(horizontalWheel.getDistance().convert(in))).c_str());
-		pros::screen::print(pros::E_TEXT_MEDIUM,1,("left dist: " + std::to_string(chassis.leftTracker.getDistance().convert(in))).c_str());
+		std::cout << pose.x.convert(in) << "," << pose.y.convert(in) << "\n";
+		//pros::screen::print(pros::E_TEXT_MEDIUM,5,("back dist: " + std::to_string(horizontalWheel.getDistance().convert(in))).c_str());
+		/**pros::screen::print(pros::E_TEXT_MEDIUM,1,("left dist: " + std::to_string(chassis.leftTracker.getDistance().convert(in))).c_str());
 		pros::screen::print(pros::E_TEXT_MEDIUM,2,("right dist: " + std::to_string(chassis.rightTracker.getDistance().convert(in))).c_str());
 		**/
 		pros::delay(50);
@@ -75,31 +57,10 @@ void initialize()
 void disabled() {}
 
 void competition_initialize() {}
-
+//15.5 inch height
+//13.5 inch width
 void autonomous() {
-	//chassis.setPose({0_m,0_m,360_cDeg});
-	//chassis.turnTo(-90_cDeg);
-	//chassis.waitUntilSettled();
-	
-	/**chassis.turnTo(90_cDeg);
-	chassis.waitUntilSettled();
-	chassis.turnTo(0_cDeg);
-	chassis.waitUntilSettled();
-	chassis.turnTo(-170_cDeg);
-	chassis.waitUntilSettled();
-	chassis.turnTo(90_cDeg);
-	chassis.waitUntilSettled();
-	chassis.turnTo(0_cDeg,lib10478::CW);
-	chassis.waitUntilSettled();
-	chassis.turnTo(-45_cDeg);
-	chassis.waitUntilSettled();
-	chassis.turnTo(0_cDeg);
-	chassis.waitUntilSettled();
-	chassis.turnTo(90_cDeg,lib10478::CCW);
-	chassis.waitUntilSettled();
-	chassis.turnTo(0_cDeg);
-	chassis.waitUntilSettled();**/
-	//skillsBack();
+	trueSoloWP();
 }
 
 bool usedIntake = false;
@@ -165,8 +126,6 @@ bool exitCorner = false;
 void opcontrol()
 {
 	std::cout << "hi \n";
-	pros::c::motor_set_encoder_units(intake.getPort(), pros::E_MOTOR_ENCODER_DEGREES);
-	pros::c::motor_set_gearing(intake.getPort(), pros::E_MOTOR_GEAR_600);
 	chassis.CancelMovement();
 	Drivers driver = DARIUS;
 
