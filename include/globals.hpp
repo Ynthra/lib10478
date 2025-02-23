@@ -23,7 +23,7 @@ extern lib10478::PID armPID;
 
 enum lbTargets{
 	DOWN = -119,
-	ALLIGNED = -93,
+	ALLIGNED = -92,
 	RAISED = -60,
 	SCORING = 32
 };

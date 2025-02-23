@@ -1,6 +1,7 @@
 #include "auton.hpp"
 #include "intake.hpp"
 #include "lib10478/bezier.hpp"
+#include "lib10478/controller.hpp"
 #include "lib10478/lib10478.hpp"
 #include "globals.hpp"
 #include "pros/device.hpp"
@@ -82,23 +83,24 @@ void skillsBack(){
 }
 
 void trueSoloWP(){
-
-
+    auto now = pros::millis();
     chassis.setPose({55.5_in, -30.797_in,90_cDeg});
     auto getGoal = chassis.generateProfile(
-        lib10478::CubicBezier({55.500000_in, -30.797000_in}, {40.000000_in, -30.797000_in}, {40.828779_in, -31.742836_in}, {31.407394_in, -26.665220_in})
+        lib10478::CubicBezier({55.500000_in, -30.797000_in}, {40.000000_in, -30.797000_in}, {41.728972_in, -31.699957_in}, {32.307587_in, -26.622341_in})
     );
     chassis.followProfile(getGoal,{.followReversed=true});
     auto getFirstRing = chassis.generateProfile(
-        lib10478::CubicBezier({31.407394_in, -26.665220_in}, {41.596816_in, -32.155647_in}, {33.493868_in, -37.388440_in}, {24.538464_in, -41.897455_in})
+        lib10478::CubicBezier({32.307587_in, -26.622341_in}, {42.344851_in, -32.028937_in}, {33.250025_in, -37.094680_in}, {24.294621_in, -41.603695_in})
     );
     chassis.waitUntilSettled(); delete getGoal;
+    pros::delay(100);
     clamp.retract(); //clamp goal
-    pros::delay(200);
-    intakeLoop(true);
+    pros::delay(100);
     chassis.followProfile(getFirstRing);
+    pros::delay(100);
+    intakeLoop(true);
     auto getSecondRing = chassis.generateProfile(
-        lib10478::CubicBezier({24.538464_in, -41.897455_in}, {41.901697_in, -21.733053_in}, {59.533795_in, -23.554333_in}, {44.336412_in, -4.310309_in})
+        lib10478::CubicBezier({24.294621_in, -41.603695_in}, {41.377923_in, -20.770709_in}, {54.489798_in, -17.399726_in}, {41.689198_in, -0.382562_in})
     );
     chassis.waitUntilSettled(); delete getFirstRing;
     pros::delay(200);
@@ -107,17 +109,40 @@ void trueSoloWP(){
     intakeLoop(false);
     clamp.extend(); //drop goal
     chassis.followProfile(getSecondRing);
-    auto toWallstake = chassis.generateProfile(
-        lib10478::CubicBezier({44.336412_in, -4.310309_in}, {52.389743_in, -14.435225_in}, {47.530135_in, 3.014085_in}, {58.625023_in, 3.249148_in})
+    auto driveBack = chassis.generateProfile(
+        lib10478::CubicBezier({45.131435_in, -4.653162_in}, {45.821841_in, -5.571819_in}, {45.685227_in, -5.298148_in}, {46.113366_in, -5.293836_in})
     );
-    pros::delay(200);
+    pros::delay(300);
     intakePiston.extend(); //lift intake
-    intakeLoop(true);
+    bool gotRing = false;
+    pros::Task intakeTask ([&]() {
+        gotRing = waitUntilStored(3000);
+    });
     chassis.waitUntilSettled(); delete getSecondRing;
+    std::cout << (pros::millis()-now) << std::endl;
     intakePiston.retract(); //drop intake
     pros::delay(200);
-    clamp.retract(); //drop clap (to help allign)
-    chassis.followProfile(toWallstake,{.followReversed = true});
-    waitUntilStored();
-    chassis.waitUntilSettled(); delete toWallstake;
+    clamp.retract(); //drop clamp (to help allign)
+    pros::delay(50);
+    chassis.driveStraight(-2.5_in,{.followReversed=true});
+    chassis.waitUntilSettled();
+    chassis.turnTo(-90_cDeg);
+    chassis.waitUntilSettled();
+
+    pros::delay(1000);
+    if(!gotRing) controller::master.rumble(",");
+    chassis.tank(-0.5, -0.5);
+    pros::delay(300);
+    chassis.tank(-0.3, -0.3);
+    pros::delay(450);
+    chassis.tank(0, 0);
+    pros::delay(150);
+    chassis.driveStraight(1.0_in);
+    chassis.waitUntilSettled();
+    pros::delay(300);
+    if(gotRing) intakeLoop(true);
+    pros::delay(250);
+    intakeLoop(false);
+    //chassis.setPose({59_in,0_in,chassis.getPose().orientation});
+   
 }

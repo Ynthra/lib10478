@@ -95,6 +95,18 @@ std::pair<AngularVelocity, AngularVelocity> Chassis::toMotorSpeeds(ChassisSpeeds
                           toAngular<LinearVelocity>(velRight,wheelDiameter));
 }
 
+void Chassis::driveStraight(Length distance,followParams params){
+    std::lock_guard<pros::Mutex> lock(mutex);
+    auto pose = odom.getPose();
+    units::Vector2D<Number> direction = units::Vector2D<Number>::fromPolar(pose.orientation, 1);
+    currentProfile = this->generateProfile(CubicBezier(pose,
+                                                       pose + 0.33 * distance * direction,
+                                                       pose + 0.66 * distance * direction,
+                                                       pose + distance * direction),0.1_cm);
+    this->useRAMSETE = params.useRAMSETE;
+    this->followReversed = params.followReversed;
+    setState(ChassisState::FOLLOW);
+}
 void Chassis::followProfile(Profile *profile, followParams params)
 {
     std::lock_guard<pros::Mutex> lock(mutex);
@@ -105,26 +117,6 @@ void Chassis::followProfile(Profile *profile, followParams params)
     setState(ChassisState::FOLLOW);
 }
 
-constexpr Angle sanitizeAngle(Angle angle) {
-    return units::mod(units::mod(angle, 1_stRot) + 1_stRot, 1_stRot);
-}
-Angle angleError(Angle target, Angle position, turnDirection direction) {
-    // bound angles from 0 to 2pi or 0 to 360
-    target = sanitizeAngle(target);
-    target = sanitizeAngle(target);
-    const Angle max = 1_stRot;
-    const Angle rawError = target - position;
-    switch (direction) {
-        case lib10478::CW: // turn clockwise
-            if(rawError.internal() < 0) return rawError + max;
-            else return rawError;// add max if sign does not match
-        case lib10478::CCW: // turn counter-clockwise
-            if(rawError.internal() > 0) return rawError - max;
-            else return rawError;// ad // subtract max if sign does not match
-        default: // choose the shortest path
-            return units::remainder(rawError, max);
-    }
-}
 Angle Chassis::getError(Angle target, Angle position, turnDirection direction) {
     // Wrap the angle to be within 0pi and 2pi radians
     target = units::mod(units::mod(target, 1_stRot) + 1_stRot, 1_stRot);
@@ -145,6 +137,7 @@ void Chassis::turnTo(Angle angle, turnDirection direction){
     currentProfile = this->generateProfile(CubicBezier({0_m,0_m},{0_m,0.33*distance},{0_m,0.66*distance},{0_m,distance}));
     setState(ChassisState::TURN);
 }
+
 
 void Chassis::CancelMovement()  
 {

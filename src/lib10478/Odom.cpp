@@ -36,7 +36,7 @@ Odom::Odom(lemlib::IMU* imu, TrackingWheel* left, TrackingWheel* right, Tracking
 
 units::Pose Odom::getPose()
 {
-    std::lock_guard<pros::Mutex> lock (mutex);
+    //std::lock_guard<pros::Mutex> lock (mutex);
     return m_pose; 
 }
 

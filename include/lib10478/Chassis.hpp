@@ -64,6 +64,7 @@ public:
 
     Profile* generateProfile(const virtualPath& path, Length dd = 0.2_cm);
     void followProfile(Profile *profile, followParams params = {});
+    void driveStraight(Length distance,followParams params = {});
     void turnTo(Angle angle, turnDirection direction = AUTO);
     void CancelMovement();
     void waitUntilSettled();

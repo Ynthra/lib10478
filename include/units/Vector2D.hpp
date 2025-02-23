@@ -229,9 +229,9 @@ template <isQuantity T> class Vector2D {
          *
          * This function normalizes the vector, making it a unit vector
          *
-         * @return Vector2D<T>
+         * @return Vector2D<Number>
          */
-        constexpr Vector2D<T> normalize() const { return (*this) / magnitude(); }
+        constexpr Vector2D<Number> normalize() const { return (*this) / magnitude(); }
 
         /**
          * @brief get a copy of this vector rotated by an angle

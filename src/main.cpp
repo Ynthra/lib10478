@@ -24,10 +24,10 @@
 
 void initialize() 
 { 
-	pros::delay(100);
-
 	optical.set_led_pwm(100);
 	optical.set_integration_time(20);
+
+	pros::delay(150);
 
 	pros::c::motor_set_encoder_units(intake.getPort(), pros::E_MOTOR_ENCODER_DEGREES);
 	pros::c::motor_set_gearing(intake.getPort(), pros::E_MOTOR_GEAR_600);
@@ -35,8 +35,14 @@ void initialize()
 	horizontalWheel.reset();
 	chassis.init();
 
+	pros::delay(100);
+	chassis.setPose({0_m,0_m,0_cDeg});
 	pros::Task screenTask([&]() {
 	SimpleMovingAverage intakePowSMA(20);
+	{
+		//const units::Pose pose = chassis.getPose();
+		//std::cout <<pose.x.convert(in) << "," << pose.y.convert(in) << "\n";
+	}
 	while (true) {
 		const units::Pose pose = chassis.getPose();
 		pros::screen::print(pros::E_TEXT_MEDIUM,0,("x: " + std::to_string(pose.x.convert(in))).c_str());
@@ -44,7 +50,9 @@ void initialize()
 		pros::screen::print(pros::E_TEXT_MEDIUM,2,("angle: " + std::to_string(to_cDeg(pose.orientation))).c_str());
 		pros::screen::print(pros::E_TEXT_MEDIUM,3,("intake power: " + std::to_string(intakePowSMA.next(pros::c::motor_get_power(intake.getPort())))).c_str());
 		
-		std::cout << pose.x.convert(in) << "," << pose.y.convert(in) << "\n";
+		std::cout <<pose.x.convert(in) << "," << pose.y.convert(in) << "\n";
+		//std::cout <<"(" <<pose.x.convert(in) << "," << pose.y.convert(in) << "),";
+
 		//pros::screen::print(pros::E_TEXT_MEDIUM,5,("back dist: " + std::to_string(horizontalWheel.getDistance().convert(in))).c_str());
 		/**pros::screen::print(pros::E_TEXT_MEDIUM,1,("left dist: " + std::to_string(chassis.leftTracker.getDistance().convert(in))).c_str());
 		pros::screen::print(pros::E_TEXT_MEDIUM,2,("right dist: " + std::to_string(chassis.rightTracker.getDistance().convert(in))).c_str());
@@ -75,7 +83,7 @@ void intakeControl(controller::Button button){
 
 void armControl(controller::Button button){
 	if (button.pressed && lbtarget == DOWN) {
-		lbtarget = ALLIGNED;
+		lbtarget = ALLIGNED; 
 	}
 	if(button.released && lbtarget == ALLIGNED){
 		intake.move(0);
@@ -114,9 +122,9 @@ void intakePistonControl(controller::Button button){
 	}
 }
 
-enum Drivers{
-	DARIUS,
-	ADE
+enum Controls{
+	MAIN,
+	SKILLS
 };
 
 bool startedDriver = false;
@@ -127,7 +135,7 @@ void opcontrol()
 {
 	std::cout << "hi \n";
 	chassis.CancelMovement();
-	Drivers driver = DARIUS;
+	Controls control = MAIN;
 
 	if(startedDriver == false){
 		timer = pros::millis();
@@ -160,18 +168,24 @@ void opcontrol()
 					controller::driveCurve(controller::master.get_analog(pros::E_CONTROLLER_ANALOG_RIGHT_Y), 
 						1, 8, 127, 0.1, 1));
 		
-		if (driver == ADE) {
-			intakeControl(controller::L1);
-			armControl(controller::L2);
-			clampControl(controller::R1);
-			doinkerControl(controller::R2);
-			intakePistonControl(controller::Up);
-		}
-		if(driver == DARIUS){
+		if(control == MAIN){
 			intakeControl(controller::L1);
 			armControl(controller::R2);
 			clampControl(controller::R1);
 			doinkerControl(controller::L2);
+			intakePistonControl(controller::Up);
+		}
+		else if(control == SKILLS) {
+			intakeControl(controller::L1);
+			armControl(controller::R2);
+			clampControl(controller::R1);
+			if(controller::L2.pressed){
+				chassis.driveStraight(1_in);
+				chassis.waitUntilSettled();
+				pros::delay(300);
+				intakeLoop(true);
+				pros::delay(250);
+			}
 			intakePistonControl(controller::Up);
 		}
 		pros::delay(10);
