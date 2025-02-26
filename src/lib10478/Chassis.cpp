@@ -20,6 +20,7 @@
 #include <cstdio>
 #include <math.h>
 #include <mutex>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -33,30 +34,35 @@ Chassis::Chassis(std::initializer_list<lemlib::ReversibleSmartPort> leftPorts,
                  std::initializer_list<lemlib::ReversibleSmartPort> rightPorts,
                  lemlib::IMU* imu,
                  AngularVelocity outputVelocity,
+                 Length trackWidth,
                  Length wheelDiameter, Constraints constraints, 
                  VelocityController* leftController, VelocityController* rightController,
                  TrackingWheel* backTracker)
     : leftMotors(leftPorts,outputVelocity), rightMotors(rightPorts,outputVelocity), 
+      trackWidth(trackWidth),
       wheelDiameter(wheelDiameter), constraints(constraints),
-      leftTracker(&leftMotors,wheelDiameter,-constraints.trackWidth/2),
-      rightTracker(&rightMotors,wheelDiameter,constraints.trackWidth/2),
+      leftTracker(&leftMotors,wheelDiameter,-trackWidth/2),
+      rightTracker(&rightMotors,wheelDiameter,trackWidth/2),
       imu(imu),
       odom(imu, &leftTracker, &rightTracker, backTracker), 
       leftController(leftController),rightController(rightController) {}
 
 LinearVelocity Chassis::maxSpeed(Curvature curvature){
-    const LinearVelocity maxSlip = units::sqrt(9.81_mps2 * constraints.frictionCoefficent / curvature);
-    const LinearVelocity maxTurn = (2*constraints.maxVel) / (units::abs(curvature)*constraints.trackWidth+2);
-    return units::min(maxSlip,maxTurn);
+    //const LinearVelocity maxSlip = units::sqrt(9.81_mps2 * constraints.frictionCoefficent / curvature);
+    //const LinearVelocity maxTurn = (2*constraints.maxVel) / (units::abs(curvature)*constraints.trackWidth+2);
+    //return units::min(maxSlip,maxTurn);
 }
 
-Profile* Chassis::generateProfile(const virtualPath& path, Length dd)
+Profile* Chassis::generateProfile(const virtualPath& path, Length dd, std::optional<Constraints> constraints)
 {
     Length dist = dd;
-    LinearVelocity vel = 0_mps;
+    LinearVelocity vel = 0_mps; //inital max velocity
     double t = 0;
 
     std::vector<ProfilePoint> profile;
+
+    Constraints prevConstraints = this->constraints;
+    if(constraints.has_value()) this->constraints = constraints.value();
 
     while (t <= 1)
     {
@@ -65,51 +71,53 @@ Profile* Chassis::generateProfile(const virtualPath& path, Length dd)
         const Curvature curvature = path.getCurvature(t);
         
         t += dd.internal() / deriv.magnitude().internal();
+        const LinearAcceleration maxAccel = (2*this->constraints.maxAccel)/(units::abs(curvature)*this->trackWidth+2);
 
-        const LinearAcceleration maxAccel = (2*this->constraints.maxAccel)/(units::abs(curvature)*constraints.trackWidth+2);
-        vel = std::min(maxSpeed(curvature), units::sqrt(vel * vel + 2 * maxAccel * dd));
+        const LinearVelocity maxSlipVel = units::sqrt(9.81_mps2 * this->constraints.frictionCoefficent / curvature);
+        const LinearVelocity maxTurnVel = (2*this->constraints.velLimits.at(dist)) / (units::abs(curvature)*this->trackWidth+2);
+        const LinearVelocity maxAccelVel = units::sqrt(vel * vel + 2 * maxAccel * dd);
+        vel = units::min(units::min(maxSlipVel,maxTurnVel), maxAccelVel);
+
+        profile.push_back(ProfilePoint({point,units::atan2(deriv.y, deriv.x)}, vel, curvature, dist));
         dist += dd;
-
-        profile.push_back(ProfilePoint({point,units::atan2(deriv.y, deriv.x)}, vel, curvature));
     }
 
-    vel = 0_mps;
+    vel = 0_mps; //ending max Velocity
 
     for (int i = profile.size()-1; i >= 0; i--){
         const ProfilePoint profilePoint = profile[i];
-        const LinearAcceleration maxDecel = (2*this->constraints.maxDecel)/(units::abs(profilePoint.curvature)*constraints.trackWidth+2);
-        vel = std::min(profilePoint.velocity, units::sqrt(vel * vel + 2 * maxDecel * dd));
+        const LinearAcceleration maxDecel = (2*this->constraints.maxDecel)/(units::abs(profilePoint.curvature)*this->trackWidth+2);
+        vel = units::min(profilePoint.velocity, units::sqrt(vel * vel + 2 * maxDecel * dd));
         profile[i].velocity = vel;
     }
 
+    this->constraints = prevConstraints;
     return new Profile(profile,dd);
 }
 //v = wr
 //vc = w
 std::pair<AngularVelocity, AngularVelocity> Chassis::toMotorSpeeds(ChassisSpeeds speeds)
 {
-	const LinearVelocity velLeft = speeds.v - toLinear<AngularVelocity>(speeds.ω, constraints.trackWidth);
-	const LinearVelocity velRight = speeds.v + toLinear<AngularVelocity>(speeds.ω, constraints.trackWidth);
+	const LinearVelocity velLeft = speeds.v - toLinear<AngularVelocity>(speeds.ω, this->trackWidth);
+	const LinearVelocity velRight = speeds.v + toLinear<AngularVelocity>(speeds.ω, this->trackWidth);
 
     return std::make_pair(toAngular<LinearVelocity>(velLeft,wheelDiameter),
                           toAngular<LinearVelocity>(velRight,wheelDiameter));
 }
 
 void Chassis::driveStraight(Length distance,followParams params){
-    std::lock_guard<pros::Mutex> lock(mutex);
     auto pose = odom.getPose();
     units::Vector2D<Number> direction = units::Vector2D<Number>::fromPolar(pose.orientation, 1);
-    currentProfile = this->generateProfile(CubicBezier(pose,
+    const auto profile =  this->generateProfile(CubicBezier(pose,
                                                        pose + 0.33 * distance * direction,
                                                        pose + 0.66 * distance * direction,
                                                        pose + distance * direction),0.1_cm);
-    this->useRAMSETE = params.useRAMSETE;
-    this->followReversed = params.followReversed;
-    setState(ChassisState::FOLLOW);
+    followProfile(profile,params);
 }
 void Chassis::followProfile(Profile *profile, followParams params)
 {
     std::lock_guard<pros::Mutex> lock(mutex);
+    distTarget = profile->getLength();
     profile->prev = 0;
     currentProfile = profile;
     this->useRAMSETE = params.useRAMSETE;
@@ -131,19 +139,28 @@ int turnLoops;
 void Chassis::turnTo(Angle angle, turnDirection direction){
     std::lock_guard<pros::Mutex> lock(mutex);
     const units::Pose pose = odom.getPose();
-    const Length distance = toLinear<Angle>(getError(angle, pose.orientation, direction),this->constraints.trackWidth);
+    const Length distance = toLinear<Angle>(getError(angle, pose.orientation, direction),this->trackWidth);
     this->direction = turnDirection(sgn(distance.internal()));
     this->targetAngle = angle;
     currentProfile = this->generateProfile(CubicBezier({0_m,0_m},{0_m,0.33*distance},{0_m,0.66*distance},{0_m,distance}));
     setState(ChassisState::TURN);
 }
 
+void Chassis::waitUntilDist(Length d){
+    auto now = pros::millis();
+    while(true){
+        std::lock_guard<pros::Mutex> lock(mutex);
+        if(distTarget < d) break;
+        pros::Task::delay_until(&now, 10);
+    }
+}
+
 
 void Chassis::CancelMovement()  
 {
     std::lock_guard<pros::Mutex> lock(mutex);
-    tank(0_percent,0_percent);
     setState(ChassisState::IDLE);
+    tank(0_percent,0_percent);
 }
 void Chassis::waitUntilSettled()
 {
@@ -284,6 +301,8 @@ void Chassis::init() {
                     units::Pose currentPose = odom.getPose();
                     if (followReversed) currentPose.orientation = currentPose.orientation + from_stDeg(M_PI);
                     const ProfilePoint point = currentProfile->getProfilePoint(currentPose);
+                    distTarget = currentProfile->getLength()-point.dist;
+
                     if (point == currentProfile->profile.back()) {
                         setState(ChassisState::IDLE);
                         tank(0_percent,0_percent);
@@ -329,11 +348,12 @@ void Chassis::init() {
                         delete currentProfile;
                         setState(ChassisState::IDLE);
                         tank(0_percent,0_percent);
+                        this->direction = AUTO;
                         break;
                     }
 
                     const Length d = currentProfile->getLength() - this->direction*toLinear<Angle>(
-                                angularError, this->constraints.trackWidth);
+                                angularError, this->trackWidth);
                     
                     if (currentProfile == nullptr) break;
                     LinearVelocity velocity = currentProfile->getProfilePoint(d).velocity;

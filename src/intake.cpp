@@ -26,6 +26,7 @@ bool storeRing = false;
 bool prevSpin = false;
 int settledTime = 0;
 int stoppedTime = 0;
+ringColors detectionColor = TEAMCOLOR;
 void intakeLoop(bool spin){
 	const bool isStationary = pros::c::motor_get_actual_velocity(intake.getPort()) < 0.001;
 	const bool atTarget = (intakeAngle - intake.getAngle()) < 5_stDeg;
@@ -39,6 +40,7 @@ void intakeLoop(bool spin){
 		if ((detectedColor != NONE) && (detectedColor != TEAMCOLOR)){
 			sorting = true;
 			intakeAngle = from_stDeg(roundUpToNearestMultiple(to_stDeg(intake.getAngle()- from_stDeg(NEXTTOOTH) * 0.69), NEXTTOOTH, 0) + NEXTTOOTH * 0.69);
+			
 			intake.move(100_percent);
 			stoppedTime = 0;
 		}	
@@ -63,7 +65,7 @@ void intakeLoop(bool spin){
 				pros::c::motor_move_absolute(intake.getPort(),to_stDeg(intakeAngle), 600);
 				stoppedTime = 0;
 				if(storeRing) {
-					intake.move(100_percent);
+					intake.move(80_percent);
 					return;
 				}
 			}
@@ -73,7 +75,7 @@ void intakeLoop(bool spin){
 		}
 	}
 	if (storeRing) {
-		if (detectedColor == TEAMCOLOR) {
+		if (detectedColor == detectionColor) {
 			intake.move(0);
 			storeRing = false;
 			detectedColor = NONE;	
@@ -103,11 +105,11 @@ void intakeLoop(bool spin){
 	prevSpin = spin;
 }
 
-bool waitUntilStored(int timeout){
+bool waitUntilStored(int timeout, bool down){
 	if (timeout == 0) timeout = 60000;
 	storeRing = true;
 	auto now = pros::millis();
-	intake.move(70_percent);
+	intake.move(80_percent);
 	while (storeRing) {
 		if ((pros::millis() - now) > timeout) {
 			storeRing = false;
@@ -117,9 +119,13 @@ bool waitUntilStored(int timeout){
 		intakeLoop(true);
 		pros::delay(10);
 	}
-	intakeLoop(false);
-	pros::delay(500);
-	pros::c::motor_move_relative(intake.getPort(),-0.35*NEXTTOOTH,300);
-	pros::delay(500);
+	if(down){
+		pros::delay(500);
+		pros::c::motor_move_relative(intake.getPort(),-0.35*NEXTTOOTH,300);
+		pros::delay(500);
+	}
+	else{
+		intake.move(0);
+	}
 	return true;
 } 

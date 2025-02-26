@@ -19,4 +19,4 @@ enum intakeStates{
 inline Number intakeMaxSpeed = 1;
 extern ringColors getColor();
 extern void intakeLoop(bool spin);
-extern bool waitUntilStored(int timeout = 0);
+extern bool waitUntilStored(int timeout = 0, bool down = false);

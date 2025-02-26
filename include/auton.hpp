@@ -1,6 +1,5 @@
 #pragma once
 
 
-extern void solowp();
-extern void skillsBack();
+extern void skills();
 extern void trueSoloWP();

@@ -7,6 +7,7 @@
 #include "hardware/Motor/MotorGroup.hpp"
 #include <atomic>
 #include <concepts>
+#include <optional>
 #include <utility>
 #include "bezier.hpp"
 #include "Profile.hpp"
@@ -17,8 +18,7 @@ namespace lib10478
 
 struct Constraints
 {
-    Length trackWidth;
-    LinearVelocity maxVel;
+    VelocityLimits velLimits;
     LinearAcceleration maxAccel;
     LinearAcceleration maxDecel;
     Number frictionCoefficent;
@@ -55,6 +55,7 @@ public:
             std::initializer_list<lemlib::ReversibleSmartPort> rightPorts,
             lemlib::IMU* imu,
             AngularVelocity outputVelocity,
+            Length trackWidth,
             Length wheelDiameter, Constraints constraints, 
             VelocityController* leftController, VelocityController* rightController,
             TrackingWheel* backTracker);
@@ -62,12 +63,13 @@ public:
     lemlib::MotorGroup leftMotors;
     lemlib::MotorGroup rightMotors;
 
-    Profile* generateProfile(const virtualPath& path, Length dd = 0.2_cm);
+    Profile* generateProfile(const virtualPath& path, Length dd = 0.2_cm, std::optional<Constraints> constraints = std::nullopt);
     void followProfile(Profile *profile, followParams params = {});
     void driveStraight(Length distance,followParams params = {});
     void turnTo(Angle angle, turnDirection direction = AUTO);
     void CancelMovement();
     void waitUntilSettled();
+    void waitUntilDist(Length d);
     void init();
     void setPose(units::Pose pose);
     units::Pose getPose();
@@ -80,6 +82,7 @@ public:
     TrackingWheel rightTracker;
     TrackingWheel leftTracker;
 private:
+    Length distTarget = 0_m;
     Odom odom;
     lemlib::IMU* imu;
     pros::Task* task = nullptr;
@@ -92,12 +95,13 @@ private:
     Angle targetAngle = 0_stDeg;
     VelocityController* leftController;
     VelocityController* rightController;
-
+    
     LinearVelocity maxSpeed(Curvature Curvature);
     ChassisSpeeds RAMSETE(ChassisSpeeds speeds, units::Pose target, units::Pose current);
     std::pair<AngularVelocity, AngularVelocity> toMotorSpeeds(ChassisSpeeds speeds);
     Length wheelDiameter;
     Constraints constraints;
+    Length trackWidth;
 };
 
 }

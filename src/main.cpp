@@ -8,6 +8,7 @@
 #include "lib10478/controller.hpp"
 #include "globals.hpp"
 #include "pros/device.hpp"
+#include "pros/misc.hpp"
 #include "units/Angle.hpp"
 #include "pros/motors.h"
 #include "pros/rtos.hpp"
@@ -17,11 +18,14 @@
 #include "units/Pose.hpp"
 #include "units/units.hpp"
 #include <cmath>
+#include <iostream>
 #include <iterator>
 #include <string>
 #include <sys/_intsup.h>
 #include <vector>
 
+
+std::vector<std::string> outputs;
 void initialize() 
 { 
 	optical.set_led_pwm(100);
@@ -43,14 +47,22 @@ void initialize()
 		//const units::Pose pose = chassis.getPose();
 		//std::cout <<pose.x.convert(in) << "," << pose.y.convert(in) << "\n";
 	}
+	units::Pose pose = chassis.getPose();
 	while (true) {
-		const units::Pose pose = chassis.getPose();
+		auto prevPose = pose;
+		pose = chassis.getPose();
 		pros::screen::print(pros::E_TEXT_MEDIUM,0,("x: " + std::to_string(pose.x.convert(in))).c_str());
 		pros::screen::print(pros::E_TEXT_MEDIUM,1,("y: " + std::to_string(pose.y.convert(in))).c_str());
 		pros::screen::print(pros::E_TEXT_MEDIUM,2,("angle: " + std::to_string(to_cDeg(pose.orientation))).c_str());
 		pros::screen::print(pros::E_TEXT_MEDIUM,3,("intake power: " + std::to_string(intakePowSMA.next(pros::c::motor_get_power(intake.getPort())))).c_str());
 		
-		std::cout <<pose.x.convert(in) << "," << pose.y.convert(in) << "\n";
+		if(pros::competition::is_autonomous() && (pose.x != prevPose.x) && (pose.y != prevPose.y)){
+			ouputs.push_back(
+			std::to_string(pose.x.convert(in)) + "," +
+			std::to_string(pose.y.convert(in))
+			);
+		}
+		//std::cout <<pose.x.convert(in) << "," << pose.y.convert(in) << "\n";
 		//std::cout <<"(" <<pose.x.convert(in) << "," << pose.y.convert(in) << "),";
 
 		//pros::screen::print(pros::E_TEXT_MEDIUM,5,("back dist: " + std::to_string(horizontalWheel.getDistance().convert(in))).c_str());
@@ -68,7 +80,8 @@ void competition_initialize() {}
 //15.5 inch height
 //13.5 inch width
 void autonomous() {
-	trueSoloWP();
+	skills();
+	//trueSoloWP();
 }
 
 bool usedIntake = false;
@@ -81,21 +94,28 @@ void intakeControl(controller::Button button){
 }
 
 
-void armControl(controller::Button button){
-	if (button.pressed && lbtarget == DOWN) {
+void armControl(controller::Button mainButton, controller::Button hangButton){
+	if (mainButton.pressed && lbtarget == DOWN) {
 		lbtarget = ALLIGNED; 
 	}
-	if(button.released && lbtarget == ALLIGNED){
+	if(mainButton.released && lbtarget == ALLIGNED){
 		intake.move(0);
 		lbtarget = RAISED;
 	}
-	if(button.pressed && lbtarget == RAISED){
+	if(mainButton.pressed && lbtarget == RAISED){
 		lbtarget = SCORING;
 	}
-	if(button.released && lbtarget == SCORING){
+	if(mainButton.released && lbtarget == SCORING){
 		lbtarget = DOWN;
 	}
 
+	if(hangButton.pressed){
+		lbtarget = HANGING;
+	}
+
+	if (mainButton.pressed && lbtarget == HANGING) {
+		lbtarget = SCORING; 
+	}
 	const double kG = -1; //accounts for weight of arm
 
 	const Angle armAngle = armSensor.getAngle()-360_stDeg;
@@ -113,7 +133,7 @@ void clampControl(controller::Button button){
 }
 void doinkerControl(controller::Button button){
 	if(button.pressed){
-		doinker.toggle();
+		ldoinker.toggle();
 	}
 }
 void intakePistonControl(controller::Button button){
@@ -135,7 +155,7 @@ void opcontrol()
 {
 	std::cout << "hi \n";
 	chassis.CancelMovement();
-	Controls control = MAIN;
+	Controls control = SKILLS;
 
 	if(startedDriver == false){
 		timer = pros::millis();
@@ -144,12 +164,6 @@ void opcontrol()
 	}
 	while (true) {
 		controller::update();
-		if(controller::X.pressed){
-			for(std::string out: ouputs){
-				std::cout << out << std::endl;
-			}
-
-		}
 		if(!past45s && (pros::millis()-timer)>(60000+45000-45000)){
 				past45s = true;
 				controller::master.rumble("...");
@@ -162,6 +176,16 @@ void opcontrol()
 					clamp.extend();
 				}
 		}
+		if(controller::A.pressed){
+			const units::Pose pose = chassis.getPose();
+			const Length dist = pose.y*units::sin(pose.orientation);
+			chassis.driveStraight(-dist,{.followReversed=(dist > 0_m)});
+		}
+		if(controller::Y.pressed){
+			for (auto out: outputs){
+				std::cout << out << std::endl;
+			}
+		}
 		//controller::master.set_text(2,0,std::to_string(to_cDeg(chassis.getPose().orientation)));
 		chassis.tank(controller::driveCurve(controller::master.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_Y), 
 						1, 8, 127, 0.1, 1), 
@@ -170,14 +194,14 @@ void opcontrol()
 		
 		if(control == MAIN){
 			intakeControl(controller::L1);
-			armControl(controller::R2);
+			armControl(controller::R2,controller::X);
 			clampControl(controller::R1);
 			doinkerControl(controller::L2);
 			intakePistonControl(controller::Up);
 		}
 		else if(control == SKILLS) {
 			intakeControl(controller::L1);
-			armControl(controller::R2);
+			armControl(controller::R2,controller::X);
 			clampControl(controller::R1);
 			if(controller::L2.pressed){
 				chassis.driveStraight(1_in);
