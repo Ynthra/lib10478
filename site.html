@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<head>
+  <meta charset="utf-8">
+  <title>10478 Path Planner</title>
+  <style>
+    body { margin: 0; overflow: hidden; }
+    #toolbar {
+      position: fixed;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #eee;
+      padding: 5px;
+      z-index: 100;
+      font-family: sans-serif;
+      display: flex;
+      gap: 15px;
+      align-items: center;
+    }
+    canvas { 
+      display: block; 
+      background: #fff;
+      margin-left: 250px;
+      margin-right: 250px;
+    }
+    .import-dialog {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: white;
+      padding: 20px;
+      border: 1px solid #ccc;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+      z-index: 1000;
+    }
+    .import-textarea {
+      width: 400px;
+      height: 300px;
+      margin: 10px 0;
+      font-family: monospace;
+    }
+    .dialog-backdrop {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 999;
+    }
+    .dialog-buttons {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+    }
+    button {
+      padding: 5px 15px;
+      cursor: pointer;
+    }
+    #hierarchyPanel {
+      position: fixed;
+      left: 0;
+      top: 0;
+      width: 250px;
+      height: 100vh;
+      background: #f0f0f0;
+      border-right: 1px solid #ddd;
+      padding: 20px 10px;
+      overflow-y: auto;
+      z-index: 101;
+    }
+    #propertiesPanel {
+      position: fixed;
+      right: 0;
+      top: 0;
+      width: 250px;
+      height: 100vh;
+      background: #f5f5f5;
+      border-left: 1px solid #ddd;
+      padding: 20px;
+      box-shadow: -2px 0 5px rgba(0,0,0,0.1);
+      overflow-y: auto;
+    }
+    .prop-group {
+      margin-bottom: 15px;
+    }
+    .prop-group label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+    }
+    .prop-group input {
+      width: 100%;
+      padding: 5px;
+      box-sizing: border-box;
+    }
+    .spline-header {
+      background: #d0d0d0;
+      margin: 5px 0;
+      padding: 5px;
+      border-radius: 3px;
+      cursor: pointer;
+    }
+    .spline-header.active {
+      background: #a0a0ff;
+    }
+    .curve-item {
+      margin-left: 15px;
+    }
+    .control-points {
+      margin-left: 15px;
+      border-left: 2px solid #ccc;
+      padding-left: 10px;
+    }
+    .point-item {
+      padding: 3px 5px;
+      margin: 2px 0;
+      cursor: pointer;
+    }
+    .point-item.active {
+      background: #ffdddd;
+    }
+    .delete-btn {
+      float: right;
+      background: #ff4444;
+      color: white;
+      border: none;
+      padding: 2px 5px;
+      cursor: pointer;
+    }
+    .add-spline-btn {
+      margin: 10px 0;
+      width: 100%;
+      padding: 10px;
+      background: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    .collapse-icon {
+      margin-right: 5px;
+      transition: transform 0.2s;
+    }
+    .collapsed .collapse-icon {
+      transform: rotate(-90deg);
+    }
+    .connected-curve {
+      stroke-width: 3px;
+      stroke-linecap: round;
+    }
+  </style>
+</head>
+<body>
+  <div id="toolbar">
+    <label>Load Background:
+      <input type="file" id="bgInput" accept="image/*">
+    </label>
+    <button id="importBtn">Import Code</button>
+    <button id="copyCodeBtn">Copy Code</button>
+  </div>
+  <div id="hierarchyPanel">
+    <button id="newSplineBtn" class="add-spline-btn">New Spline</button>
+  </div>
+  <canvas id="canvas"></canvas>
+  <div id="propertiesPanel" style="display: none;">
+    <h3>Control Point Properties</h3>
+    <div class="prop-group">
+      <label>X Position</label>
+      <input type="number" id="propX" step="0.01">
+    </div>
+    <div class="prop-group">
+      <label>Y Position</label>
+      <input type="number" id="propY" step="0.01">
+    </div>
+  </div>
+
+  <template id="importDialogTemplate">
+    <div class="dialog-backdrop">
+      <div class="import-dialog">
+        <h3 style="margin: 0 0 15px 0;">Paste Curve Code</h3>
+        <textarea class="import-textarea" placeholder="Paste your curve code here..."></textarea>
+        <div class="dialog-buttons">
+          <button class="import-cancel">Cancel</button>
+          <button class="import-confirm">Import</button>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <script>
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
+    let splines = [];
+    let activeSplineIndex = 0;
+    let activePoint = null;
+    let bgImage = null;
+    let zoomFactor = 1.0;
+    let baseScale = 1.0;
+    let scale = 1.0;
+    let history = [];
+    let currentHistoryIndex = -1;
+    let dragStartState = null;
+    let isPanning = false;
+    let panX = 0;
+    let panY = 0;
+    let lastMouseX = 0;
+    let lastMouseY = 0;
+    let isDragging = false;
+    let isCreatingCurve = false;
+    let mouseDownX = 0;
+    let mouseDownY = 0;
+    const CLICK_THRESHOLD = 5;
+
+    // DOM elements
+    const propertiesPanel = document.getElementById("propertiesPanel");
+    const propX = document.getElementById("propX");
+    const propY = document.getElementById("propY");
+    const hierarchyPanel = document.getElementById("hierarchyPanel");
+    const newSplineBtn = document.getElementById("newSplineBtn");
+
+    // Core functionality
+    function createNewSpline() {
+      splines.push({ curves: [], collapsed: false });
+      activeSplineIndex = splines.length - 1;
+      commitToHistory();
+    }
+
+    function commitToHistory() {
+      const currentState = JSON.stringify(splines);
+      if (currentState !== JSON.stringify(history[currentHistoryIndex])) {
+        history = history.slice(0, currentHistoryIndex + 1);
+        history.push(JSON.parse(currentState));
+        currentHistoryIndex = history.length - 1;
+      }
+      updateUI();
+    }
+
+    function updateFromHistory() {
+      if (currentHistoryIndex < 0) return;
+      splines = JSON.parse(JSON.stringify(history[currentHistoryIndex]));
+      activePoint = null;
+      updateUI();
+    }
+
+    function updateUI() {
+      updateHierarchy();
+      updatePropertiesPanel();
+      draw();
+    }
+
+    function resizeCanvas() {
+      canvas.width = window.innerWidth - 500;
+      canvas.height = window.innerHeight;
+      baseScale = Math.min(canvas.width, canvas.height) / 144;
+      scale = baseScale * zoomFactor;
+      draw();
+    }
+
+    // Coordinate transformations
+    const toCanvasCoords = (x, y) => ({
+      x: canvas.width / 2 + (x - panX) * scale,
+      y: canvas.height / 2 - (y - panY) * scale
+    });
+
+    const fromCanvasCoords = (cx, cy) => ({
+      x: (cx - canvas.width / 2) / scale + panX,
+      y: (canvas.height / 2 - cy) / scale + panY
+    });
+
+    // Drawing functions
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Draw background image
+      if (bgImage) {
+        const size = 144 * scale;
+        const x = canvas.width/2 - panX*scale - size/2;
+        const y = canvas.height/2 + panY*scale - size/2;
+        ctx.drawImage(bgImage, x, y, size, size);
+      }
+
+      // Draw border
+      const [tl, br] = [toCanvasCoords(-72, 72), toCanvasCoords(72, -72)];
+      ctx.strokeStyle = "black";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(tl.x, tl.y, br.x - tl.x, br.y - tl.y);
+
+      // Draw all splines
+      splines.forEach((spline, idx) => 
+        spline.curves.forEach(curve => drawCurve(curve, idx))
+      );
+    }
+
+    function drawCurve(curve, splineIndex) {
+      const pts = curve.map(pt => toCanvasCoords(pt.x, pt.y));
+
+      // Draw control lines
+      ctx.strokeStyle = "gray";
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 2]);
+      ctx.beginPath();
+      ctx.moveTo(pts[0].x, pts[0].y);
+      ctx.lineTo(pts[1].x, pts[1].y);
+      ctx.moveTo(pts[2].x, pts[2].y);
+      ctx.lineTo(pts[3].x, pts[3].y);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Draw Bézier curve
+      const bezierPoints = [];
+      for (let t = 0; t <= 1; t += 0.01) {
+        const x = (1-t)**3*curve[0].x + 3*(1-t)**2*t*curve[1].x + 
+                  3*(1-t)*t**2*curve[2].x + t**3*curve[3].x;
+        const y = (1-t)**3*curve[0].y + 3*(1-t)**2*t*curve[1].y + 
+                  3*(1-t)*t**2*curve[2].y + t**3*curve[3].y;
+        bezierPoints.push(toCanvasCoords(x, y));
+      }
+
+      ctx.strokeStyle = splineIndex === activeSplineIndex ? "red" : "#ff8888";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      bezierPoints.forEach((pt, i) => 
+        i === 0 ? ctx.moveTo(pt.x, pt.y) : ctx.lineTo(pt.x, pt.y));
+      ctx.stroke();
+
+      // Draw control points
+      pts.forEach((pt, pi) => {
+        ctx.fillStyle = activePoint?.splineIndex === splineIndex &&
+                      activePoint?.pointIndex === pi ? "#ff4444" : "blue";
+        ctx.beginPath();
+        ctx.arc(pt.x, pt.y, 5, 0, Math.PI*2);
+        ctx.fill();
+        ctx.strokeStyle = "black";
+        ctx.stroke();
+      });
+    }
+
+    // UI management
+    function updateHierarchy() {
+      const splineList = document.createElement('div');
+      splineList.className = 'spline-list';
+
+      splines.forEach((spline, splineIndex) => {
+        const splineDiv = document.createElement('div');
+        splineDiv.className = `spline-item ${splineIndex === activeSplineIndex ? 'active' : ''}`;
+        splineDiv.innerHTML = `
+          <div class="spline-header ${splineIndex === activeSplineIndex ? 'active' : ''}">
+            <span class="collapse-icon">${spline.collapsed ? '▶' : '▼'}</span>
+            Spline ${splineIndex + 1}
+            <button class="delete-btn delete-spline">×</button>
+          </div>
+          <div class="spline-curves" style="${spline.collapsed ? 'display: none;' : ''}">
+            ${spline.curves.map((curve, curveIndex) => `
+              <div class="curve-item">
+                <div class="curve-header">
+                  Curve ${curveIndex + 1}
+                  <button class="delete-btn delete-curve">×</button>
+                </div>
+                <div class="control-points">
+                  ${curve.map((pt, ptIndex) => `
+                    <div class="point-item ${activePoint?.splineIndex === splineIndex && 
+                      activePoint?.curveIndex === curveIndex && 
+                      activePoint?.pointIndex === ptIndex ? 'active' : ''}" 
+                      data-spline="${splineIndex}" data-curve="${curveIndex}" data-point="${ptIndex}">
+                      ${ptIndex % 3 === 0 ? 'End' : 'Control'} (${pt.x.toFixed(1)}, ${pt.y.toFixed(1)})
+                    </div>
+                  `).join('')}
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        `;
+
+        // Event listeners for spline
+        const header = splineDiv.querySelector('.spline-header');
+        header.addEventListener('click', e => {
+          if (!e.target.classList.contains('delete-spline')) {
+            activeSplineIndex = splineIndex;
+            spline.collapsed = !spline.collapsed;
+            updateUI();
+          }
+        });
+
+        splineDiv.querySelector('.delete-spline').addEventListener('click', () => {
+          splines.splice(splineIndex, 1);
+          activeSplineIndex = Math.min(activeSplineIndex, splines.length - 1);
+          commitToHistory();
+        });
+
+        splineDiv.querySelectorAll('.point-item').forEach(item => {
+          item.addEventListener('click', () => {
+            activeSplineIndex = +item.dataset.spline;
+            activePoint = {
+              splineIndex: +item.dataset.spline,
+              curveIndex: +item.dataset.curve,
+              pointIndex: +item.dataset.point
+            };
+            updateUI();
+          });
+        });
+
+        splineDiv.querySelectorAll('.delete-curve').forEach((btn, ci) => {
+          btn.addEventListener('click', e => {
+            e.stopPropagation();
+            splines[splineIndex].curves.splice(ci, 1);
+            commitToHistory();
+          });
+        });
+
+        splineList.appendChild(splineDiv);
+      });
+
+      const existingList = hierarchyPanel.querySelector('.spline-list');
+      existingList ? hierarchyPanel.replaceChild(splineList, existingList) 
+                   : hierarchyPanel.appendChild(splineList);
+    }
+
+    function updatePropertiesPanel() {
+      if (!activePoint) {
+        propertiesPanel.style.display = 'none';
+        return;
+      }
+      
+      const point = splines[activePoint.splineIndex]
+        .curves[activePoint.curveIndex][activePoint.pointIndex];
+      
+      propX.value = point.x.toFixed(6);
+      propY.value = point.y.toFixed(6);
+      propertiesPanel.style.display = 'block';
+    }
+
+    const handlePropertyChange = () => {
+      if (!activePoint) return;
+      
+      const point = splines[activePoint.splineIndex]
+        .curves[activePoint.curveIndex][activePoint.pointIndex];
+      
+      const newX = parseFloat(propX.value);
+      const newY = parseFloat(propY.value);
+      
+      if (newX !== point.x || newY !== point.y) {
+        point.x = newX;
+        point.y = newY;
+        commitToHistory();
+      }
+    };
+
+    // Event listeners
+    document.addEventListener('keydown', e => {
+      if (e.ctrlKey) {
+        if (e.key === 'z' && currentHistoryIndex > 0) {
+          e.preventDefault();
+          currentHistoryIndex--;
+          updateFromHistory();
+        } else if ((e.key === 'y' || e.key === 'Z') && currentHistoryIndex < history.length - 1) {
+          e.preventDefault();
+          currentHistoryIndex++;
+          updateFromHistory();
+        }
+      }
+    });
+
+    canvas.addEventListener("mousedown", e => {
+      if (e.button === 0 && !isPanning) {
+        // Point selection
+        activePoint = null;
+        splines.forEach((spline, si) => {
+          spline.curves.forEach((curve, ci) => {
+            curve.forEach((pt, pi) => {
+              const canvasPt = toCanvasCoords(pt.x, pt.y);
+              if (Math.hypot(e.offsetX - canvasPt.x, e.offsetY - canvasPt.y) <= 8) {
+                activeSplineIndex = si;
+                activePoint = { splineIndex: si, curveIndex: ci, pointIndex: pi };
+                dragStartState = JSON.parse(JSON.stringify(splines));
+                isDragging = true;
+                updateUI();
+              }
+            });
+          });
+        });
+
+        if (!activePoint) {
+          isCreatingCurve = true;
+          mouseDownX = e.clientX;
+          mouseDownY = e.clientY;
+        }
+      } else if (e.button === 1 || e.button === 2) { // Panning
+        isPanning = true;
+        lastMouseX = e.clientX;
+        lastMouseY = e.clientY;
+        e.preventDefault();
+      }
+    });
+    
+
+    canvas.addEventListener("mousemove", e => {
+    if (isPanning) {
+      const dx = (e.clientX - lastMouseX) / scale;
+      const dy = (e.clientY - lastMouseY) / scale;
+      panX -= dx;
+      panY += dy;
+      lastMouseX = e.clientX;
+      lastMouseY = e.clientY;
+      draw();
+    } else if (isDragging && activePoint) {
+      const pos = fromCanvasCoords(e.offsetX, e.offsetY);
+      const spline = splines[activePoint.splineIndex];
+      const curve = spline.curves[activePoint.curveIndex];
+      const pointIndex = activePoint.pointIndex;
+
+      // Calculate delta movement
+      const deltaX = pos.x - curve[pointIndex].x;
+      const deltaY = pos.y - curve[pointIndex].y;
+
+      // Update the dragged point
+      curve[pointIndex] = pos;
+
+      if (pointIndex === 2) { // Dragging P₂ control point
+        const nextCurve = spline.curves[activePoint.curveIndex + 1];
+        if (nextCurve) {
+          const sharedPoint = curve[3];
+          nextCurve[1].x = 2 * sharedPoint.x - pos.x;
+          nextCurve[1].y = 2 * sharedPoint.y - pos.y;
+        }
+      } else if (pointIndex === 1) { // Dragging Q₁ control point
+        const prevCurve = spline.curves[activePoint.curveIndex - 1];
+        if (prevCurve) {
+          const sharedPoint = curve[0];
+          prevCurve[2].x = 2 * sharedPoint.x - pos.x;
+          prevCurve[2].y = 2 * sharedPoint.y - pos.y;
+        }
+      }
+
+      // Move associated control point with endpoints
+      if (pointIndex === 0) {
+        curve[1].x += deltaX;
+        curve[1].y += deltaY;
+        const prevCurve = spline.curves[activePoint.curveIndex - 1];
+        if (prevCurve) {
+          prevCurve[3] = pos;
+          prevCurve[2].x += deltaX;
+          prevCurve[2].y += deltaY;
+        }
+      } else if (pointIndex === 3) {
+        curve[2].x += deltaX;
+        curve[2].y += deltaY;
+        const nextCurve = spline.curves[activePoint.curveIndex + 1];
+        if (nextCurve) {
+          nextCurve[0] = pos;
+          nextCurve[1].x += deltaX;  // Modified for C¹
+          nextCurve[1].y += deltaY;  // Modified for C¹
+        }
+      }
+
+      updateUI();
+    }
+  });
+
+    canvas.addEventListener("mouseup", e => {
+      if (isPanning) isPanning = false;
+      if (isDragging) {
+        if (JSON.stringify(splines) !== JSON.stringify(dragStartState)) commitToHistory();
+        isDragging = false;
+      }
+      
+      if (isCreatingCurve && e.button === 0) {
+        if (Math.hypot(e.clientX - mouseDownX, e.clientY - mouseDownY) < CLICK_THRESHOLD) {
+          const pos = fromCanvasCoords(e.offsetX, e.offsetY);
+          const spline = splines[activeSplineIndex];
+          const lastCurve = spline.curves[spline.curves.length - 1];
+          const startPoint = lastCurve?.[3] || pos;
+
+          // New curve creation with C¹ continuity enforcement
+          const newCurve = [startPoint];
+          
+          if (lastCurve) {
+            // Enforce C¹ continuity with previous curve
+            const prevHandle = lastCurve[2];
+            
+            // Calculate mirrored handle for new curve (C¹ requirement)
+            const mirroredHandle = {
+              x: 2 * startPoint.x - prevHandle.x,
+              y: 2 * startPoint.y - prevHandle.y
+            };
+            
+            // Calculate direction vector from previous curve's last segment
+            const dirVector = {
+              x: prevHandle.x - startPoint.x,
+              y: prevHandle.y - startPoint.y
+            };
+
+            newCurve.push(
+              mirroredHandle,
+              { 
+                x: pos.x + dirVector.x, 
+                y: pos.y + dirVector.y 
+              }, // Maintain direction continuity
+              pos
+            );
+          } else {
+            // First curve in spline - default handles
+            newCurve.push(
+              { x: startPoint.x + 10, y: startPoint.y },
+              { x: pos.x - 10, y: pos.y },
+              pos
+            );
+          }
+
+          spline.curves.push(newCurve);
+          commitToHistory();
+        }
+        isCreatingCurve = false;
+      }
+    });
+
+    canvas.addEventListener("wheel", e => {
+      e.preventDefault();
+      const factor = e.deltaY < 0 ? 1.1 : 0.9;
+      const zoomPoint = fromCanvasCoords(e.offsetX, e.offsetY);
+      
+      zoomFactor *= factor;
+      scale = baseScale * zoomFactor;
+      
+      const newZoomPoint = fromCanvasCoords(e.offsetX, e.offsetY);
+      panX += zoomPoint.x - newZoomPoint.x;
+      panY += zoomPoint.y - newZoomPoint.y;
+      
+      draw();
+    });
+
+    canvas.addEventListener("contextmenu", e => e.preventDefault());
+
+    // File/image handling
+    document.getElementById("bgInput").addEventListener("change", function(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      
+      const reader = new FileReader();
+      reader.onload = e => {
+        bgImage = new Image();
+        bgImage.onload = draw;
+        bgImage.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+
+    // Import/export handlers
+    document.getElementById("importBtn").addEventListener("click", () => {
+      const dialog = document.getElementById("importDialogTemplate").content.cloneNode(true);
+      const textarea = dialog.querySelector("textarea");
+      const confirm = dialog.querySelector(".import-confirm");
+      const cancel = dialog.querySelector(".import-cancel");
+
+      // Replace the entire import handling code with this revised version:
+      confirm.addEventListener("click", () => {
+        const input = textarea.value;
+        const newSplines = [];
+        
+        // Updated Spline pattern with parenthesis support
+        const splineRegex = /lib10478::Spline\s*\(\s*{([\s\S]+?)}\s*\)\s*;/g;
+        const bezierRegex = /new\s+lib10478::CubicBezier\(\s*{\s*(-?\d+\.?\d*)_in\s*,\s*(-?\d+\.?\d*)_in\s*}\s*,\s*{\s*(-?\d+\.?\d*)_in\s*,\s*(-?\d+\.?\d*)_in\s*}\s*,\s*{\s*(-?\d+\.?\d*)_in\s*,\s*(-?\d+\.?\d*)_in\s*}\s*,\s*{\s*(-?\d+\.?\d*)_in\s*,\s*(-?\d+\.?\d*)_in\s*}\s*\)/g;
+
+        let splineMatch;
+        while ((splineMatch = splineRegex.exec(input)) !== null) {
+          const curves = [];
+          const splineContent = splineMatch[1];
+          
+          const bezierInstance = new RegExp(bezierRegex.source, 'g');
+          let bezierMatch;
+          
+          while ((bezierMatch = bezierInstance.exec(splineContent)) !== null) {
+            curves.push([
+              { x: parseFloat(bezierMatch[1]), y: parseFloat(bezierMatch[2]) },
+              { x: parseFloat(bezierMatch[3]), y: parseFloat(bezierMatch[4]) },
+              { x: parseFloat(bezierMatch[5]), y: parseFloat(bezierMatch[6]) },
+              { x: parseFloat(bezierMatch[7]), y: parseFloat(bezierMatch[8]) }
+            ]);
+          }
+          
+          if (curves.length > 0) {
+            newSplines.push({ curves, collapsed: false });
+          }
+        }
+
+        if (newSplines.length) {
+          splines.push(...newSplines);
+          activeSplineIndex = splines.length - 1;
+          commitToHistory();
+        }
+        
+        document.querySelector(".dialog-backdrop").remove();
+      });
+      
+      cancel.addEventListener("click", () => {
+        document.querySelector(".dialog-backdrop").remove();
+      });
+      document.body.appendChild(dialog);
+      textarea.focus();
+    });
+
+
+    document.getElementById("copyCodeBtn").addEventListener("click", async () => {
+      // Filter out empty splines
+      const validSplines = splines.filter(s => s.curves.length > 0);
+      
+      const output = validSplines.map(spline => {
+        if (spline.curves.length === 1) {
+          // Handle single curve without 'new' keyword
+          const curve = spline.curves[0];
+          return `lib10478::CubicBezier(` +
+            `{${curve[0].x.toFixed(6)}_in, ${curve[0].y.toFixed(6)}_in}, ` +
+            `{${curve[1].x.toFixed(6)}_in, ${curve[1].y.toFixed(6)}_in}, ` +
+            `{${curve[2].x.toFixed(6)}_in, ${curve[2].y.toFixed(6)}_in}, ` +
+            `{${curve[3].x.toFixed(6)}_in, ${curve[3].y.toFixed(6)}_in});`;
+        } else {
+          // Handle multiple curves with Spline and 'new' keyword
+          const curves = spline.curves.map(curve => 
+            `new lib10478::CubicBezier(` +
+            `{${curve[0].x.toFixed(6)}_in, ${curve[0].y.toFixed(6)}_in}, ` +
+            `{${curve[1].x.toFixed(6)}_in, ${curve[1].y.toFixed(6)}_in}, ` +
+            `{${curve[2].x.toFixed(6)}_in, ${curve[2].y.toFixed(6)}_in}, ` +
+            `{${curve[3].x.toFixed(6)}_in, ${curve[3].y.toFixed(6)}_in})`
+          ).join(',\n                  ');
+          return `lib10478::Spline({${curves}\n                 });`;
+        }
+      }).join('\n\n');
+
+      try {
+        await navigator.clipboard.writeText(output);
+        alert(`${validSplines.length} splines copied!`);
+      } catch {
+        prompt("Copy these curves:", output);
+      }
+    });
+
+    // Initialize
+    propX.addEventListener('input', handlePropertyChange);
+    propY.addEventListener('input', handlePropertyChange);
+    newSplineBtn.addEventListener('click', createNewSpline);
+    window.addEventListener('resize', resizeCanvas);
+
+    createNewSpline();
+    resizeCanvas();
+  </script>
+</body>
+</html>
