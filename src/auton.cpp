@@ -110,7 +110,7 @@ void trueSoloWP(){
     intakeLoop(true);
     auto toLadder = chassis.generateProfile(
         lib10478::Spline({
-            new lib10478::CubicBezier({19.562264_in, 40.845283_in}, {19.534862_in, 31.011143_in}, {23.390970_in, 32.405906_in}, {23.473015_in, 26.088452_in}),
+            new lib10478::CubicBezier({23.366038_in, 41.569811_in}, {23.338636_in, 31.735671_in}, {23.390970_in, 32.405906_in}, {23.473015_in, 26.088452_in}),
             new lib10478::CubicBezier({23.473015_in, 26.088452_in}, {23.555060_in, 19.770999_in}, {20.986697_in, 16.980962_in}, {16.253068_in, 12.715141_in})
         })
     );
@@ -154,7 +154,7 @@ void skills(){
     chassis.waitUntilSettled();
     chassis.turnTo(0_cDeg);
     chassis.waitUntilSettled();
-    chassis.driveStraight(-19.6_in,{.followReversed=true});
+    chassis.driveStraight(-18.2_in,{.followReversed=true});
     auto collectFour = chassis.generateProfile(
         lib10478::Spline({
             new lib10478::CubicBezier({-46.900000_in, -20.000000_in}, {-24.982885_in, -17.910524_in}, {-19.889792_in, -23.869029_in}, {-18.555788_in, -33.719350_in}),
@@ -171,16 +171,18 @@ void skills(){
     chassis.followProfile(collectFour);
     intakeLoop(true);
 
+
     auto toFirstWallRing = chassis.generateProfile(
-        lib10478::CubicBezier({-51.640000_in, -60.090000_in}, {-35.175780_in, -50.701631_in}, {-32.773918_in, -58.896500_in}, {1.441409_in, -64.076510_in})
+        lib10478::CubicBezier({-51.640000_in, -60.090000_in}, {-35.175780_in, -50.701631_in}, {-7.000047_in, -27.578181_in}, {-6.583815_in, -59.905204_in})
     );
 
-    chassis.waitUntilDist(2_in);
+    chassis.waitUntilDist(1_in);
     chassis.CancelMovement();
     chassis.turnTo(chassis.getPose().angleTo({-46.840676_in,-58.458311_in}),lib10478::CW);
     chassis.waitUntilSettled();
     chassis.driveStraight(17_in);
     chassis.waitUntilSettled();
+    pros::delay(50);
     chassis.turnTo(chassis.getPose().angleTo({-72_in,-72_in})+ 180_stDeg);
     chassis.waitUntilSettled();
     chassis.driveStraight(-6_in,{.followReversed=true});
@@ -194,25 +196,24 @@ void skills(){
     bool gotRing = false;
     std::atomic<bool> stillRunning = true;
     pros::Task intakeTask ([&]() {
-        gotRing = waitUntilStored(3000, true);
+        gotRing = waitUntilStored(4000, true);
         stillRunning = false;
     });
     lbtarget.store(ALLIGNED);
     chassis.waitUntilSettled(); delete toFirstWallRing;
-    {
-        const units::Pose pose = chassis.getPose();
-        const Length dist = (pose.x)/units::cos(pose.orientation);
-        chassis.driveStraight(-dist,{.followReversed=(dist > 0_m)});
-        chassis.waitUntilSettled();
-    }
+    //{
+    //    const units::Pose pose = chassis.getPose();
+    //    const Length dist = (pose.x)/units::cos(pose.orientation);
+    //    chassis.driveStraight(-dist,{.followReversed=(dist > 0_m)});
+    //    chassis.waitUntilSettled();
+    //}
     chassis.turnTo(180_cDeg);
     chassis.waitUntilSettled();
     while(stillRunning) pros::delay(10);
     intakeLoop(true);
-    chassis.driveStraight(2_in);
-    chassis.waitUntilSettled();
+    pros::delay(300);
     chassis.tank(0.2,0.2);
-    pros::delay(100);
+    pros::delay(200);
     intakeLoop(false);
     intake.move(0);
     pros::delay(50);
@@ -228,23 +229,24 @@ void skills(){
         auto pose = chassis.getPose();
         chassis.driveStraight(-pose.distanceTo(
             {units::Vector2D<Length>{-46.622901_in,0_in} -
-            0.5_in * units::Vector2D<Number>::fromPolar(pose.orientation + 180_stDeg,1)}),
+            0.0_in * units::Vector2D<Number>::fromPolar(pose.orientation + 180_stDeg,1)}),
         {.followReversed=true});
     }
     chassis.waitUntilSettled();
-    chassis.turnTo(180_cDeg);
+    chassis.turnTo(177_cDeg);
     chassis.waitUntilSettled();
     pros::delay(50);
-    chassis.setPose({-46.9_in,0_in,chassis.getPose().orientation});
+    //chassis.setPose({-46.9_in,0_in,chassis.getPose().orientation});
 
 
     //repeat here
     chassis.driveStraight(-19.6_in,{.followReversed=true});
+
     auto collectFour2nd = chassis.generateProfile(
         lib10478::Spline({
             new lib10478::CubicBezier({-46.900000_in, 20.000000_in}, {-24.982885_in, 17.910524_in}, {-19.889792_in, 23.869029_in}, {-18.555788_in, 33.719350_in}),
-            new lib10478::CubicBezier({-18.555788_in, 33.719350_in}, {-17.221785_in, 43.569671_in}, {-22.607038_in, 45.153568_in}, {-32.427205_in, 46.420687_in}),
-            new lib10478::CubicBezier({-32.427205_in, 46.420687_in}, {-42.247372_in, 47.687805_in}, {-49.374913_in, 49.588483_in}, {-56.660843_in, 54.340176_in})
+            new lib10478::CubicBezier({-18.555788_in, 33.719350_in}, {-17.221785_in, 43.569671_in}, {-24.183570_in, 44.385100_in}, {-32.427205_in, 46.420687_in}),
+            new lib10478::CubicBezier({-32.427205_in, 46.420687_in}, {-40.670840_in, 48.456274_in}, {-53.465724_in, 48.879409_in}, {-61.530391_in, 50.031505_in})
         })
         ,0.2_cm, {{maxVel*0.9, maxAccel*0.25, maxDeccel*0.5, 0.1}}
     );
@@ -259,15 +261,27 @@ void skills(){
         lib10478::CubicBezier({-51.640000_in, 60.090000_in}, {-35.175780_in, 50.701631_in}, {-32.773918_in, 58.896500_in}, {1.441409_in, 64.076510_in})
     );
 
-    chassis.waitUntilDist(2_in);
-    chassis.CancelMovement();
+    chassis.waitUntilSettled();
     chassis.turnTo(chassis.getPose().angleTo({-46.840676_in,58.458311_in}),lib10478::CW);
     chassis.waitUntilSettled();
-    chassis.driveStraight(14_in);
+    chassis.driveStraight(16_in);
     chassis.waitUntilSettled();
-    chassis.turnTo(chassis.getPose().angleTo({-72_in,72_in})+ 180_stDeg);
-    chassis.driveStraight(-6_in,{.followReversed=true});
+    chassis.turnTo(chassis.getPose().angleTo({-72_in,72_in})+ 180_stDeg + 3_stDeg);
     chassis.waitUntilSettled();
+    chassis.driveStraight(-8_in,{.followReversed=true});
+    chassis.waitUntilSettled();
+    pros::delay(50);
+    clamp.extend();
+    pros::delay(20);
+    chassis.driveStraight(2_tile);
+    clamp.toggle();
+    pros::delay(50);
+    clamp.toggle();
+    pros::delay(50);
+    clamp.toggle();
+    pros::delay(50);
+    clamp.toggle();
+    pros::delay(50);
 
     auto pose = chassis.getPose();
     controller::master.clear();
