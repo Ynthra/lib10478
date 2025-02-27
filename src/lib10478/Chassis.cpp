@@ -47,12 +47,6 @@ Chassis::Chassis(std::initializer_list<lemlib::ReversibleSmartPort> leftPorts,
       odom(imu, &leftTracker, &rightTracker, backTracker), 
       leftController(leftController),rightController(rightController) {}
 
-LinearVelocity Chassis::maxSpeed(Curvature curvature){
-    //const LinearVelocity maxSlip = units::sqrt(9.81_mps2 * constraints.frictionCoefficent / curvature);
-    //const LinearVelocity maxTurn = (2*constraints.maxVel) / (units::abs(curvature)*constraints.trackWidth+2);
-    //return units::min(maxSlip,maxTurn);
-}
-
 Profile* Chassis::generateProfile(const virtualPath& path, Length dd, std::optional<Constraints> constraints)
 {
     Length dist = dd;
@@ -94,8 +88,31 @@ Profile* Chassis::generateProfile(const virtualPath& path, Length dd, std::optio
     this->constraints = prevConstraints;
     return new Profile(profile,dd);
 }
-//v = wr
-//vc = w
+
+ChassisSpeeds Chassis::RAMSETE(ChassisSpeeds speeds, units::Pose target, units::Pose current)
+{
+    const double zeta = 0.7;
+    const double beta = 2;
+    units::Pose localError = (target - current).rotatedBy(-current.orientation);
+    localError = {localError.x,localError.y,from_stRad(std::remainder(localError.orientation.internal(),2*M_PI))};
+    
+    
+    // k = 2ζ√(ω² + b v²)
+    const double k = 2.0 * zeta * std::sqrt(std::pow(speeds.ω.internal(), 2) + beta * std::pow(speeds.v.internal(), 2));
+
+    // v_cmd = v cos(e_θ) + k e_x
+    // ω_cmd = ω + k e_θ + b v sinc(e_θ) e_y
+    const LinearVelocity adjustedLinear = from_mps(speeds.v.internal() * std::cos(localError.orientation.internal())
+                                                    + k * localError.x.internal());
+    const AngularVelocity adjustedAngular = from_radps(speeds.ω.internal() 
+                                                    + k * localError.orientation.internal()
+                                                    + beta * speeds.v.internal() 
+                                                    * sinc(localError.orientation.internal())
+                                                    * localError.y.internal());
+    
+    return ChassisSpeeds {adjustedAngular,adjustedLinear};
+}
+
 std::pair<AngularVelocity, AngularVelocity> Chassis::toMotorSpeeds(ChassisSpeeds speeds)
 {
 	const LinearVelocity velLeft = speeds.v - toLinear<AngularVelocity>(speeds.ω, this->trackWidth);
@@ -228,30 +245,6 @@ void Chassis::findDiameter(Length distance){
         if(controller::A.pressed) break;
         pros::delay(50);
     }
-}
-
-ChassisSpeeds Chassis::RAMSETE(ChassisSpeeds speeds, units::Pose target, units::Pose current)
-{
-    const double zeta = 0.7;
-    const double beta = 2;
-    units::Pose localError = (target - current).rotatedBy(-current.orientation);
-    localError = {localError.x,localError.y,from_stRad(std::remainder(localError.orientation.internal(),2*M_PI))};
-    
-    
-    // k = 2ζ√(ω² + b v²)
-    const double k = 2.0 * zeta * std::sqrt(std::pow(speeds.ω.internal(), 2) + beta * std::pow(speeds.v.internal(), 2));
-
-    // v_cmd = v cos(e_θ) + k e_x
-    // ω_cmd = ω + k e_θ + b v sinc(e_θ) e_y
-    const LinearVelocity adjustedLinear = from_mps(speeds.v.internal() * std::cos(localError.orientation.internal())
-                                                    + k * localError.x.internal());
-    const AngularVelocity adjustedAngular = from_radps(speeds.ω.internal() 
-                                                    + k * localError.orientation.internal()
-                                                    + beta * speeds.v.internal() 
-                                                    * sinc(localError.orientation.internal())
-                                                    * localError.y.internal());
-    
-    return ChassisSpeeds {adjustedAngular,adjustedLinear};
 }
 
 void Chassis::init() {

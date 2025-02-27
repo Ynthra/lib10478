@@ -96,7 +96,6 @@ private:
     VelocityController* leftController;
     VelocityController* rightController;
     
-    LinearVelocity maxSpeed(Curvature Curvature);
     ChassisSpeeds RAMSETE(ChassisSpeeds speeds, units::Pose target, units::Pose current);
     std::pair<AngularVelocity, AngularVelocity> toMotorSpeeds(ChassisSpeeds speeds);
     Length wheelDiameter;

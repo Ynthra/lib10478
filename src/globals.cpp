@@ -21,7 +21,7 @@ pros::Motor arm(-2,pros::v5::MotorGears::red,pros::v5::MotorEncoderUnits::deg);
 pros::adi::Pneumatics clamp('a',true);
 pros::adi::Pneumatics intakePiston('c',false);
 pros::adi::Pneumatics ldoinker('b',false);
-pros::adi::Pneumatics rdoinker('d',true);
+pros::adi::Pneumatics rdoinker('d',false);
 
 pros::Optical optical(10);
 lemlib::V5RotationSensor armSensor(1);
