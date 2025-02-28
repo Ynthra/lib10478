@@ -35,12 +35,12 @@ extern lemlib::V5RotationSensor armSensor;
 extern lib10478::PID armPID;
 
 enum lbTargets{
-	DOWN = -119,
-	ALLIGNED = -93,
+	DOWN = -118,
+	ALLIGNED = -92,
 	RAISED = -60,
 	SCORING = 32,
 	HANGING = 0
 };
 inline lbTargets lbtarget = DOWN;
 
-#define TEAMCOLOR RED
+#define TEAMCOLOR BLUE

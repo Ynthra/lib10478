@@ -32,6 +32,7 @@ using namespace lib10478;
 
 Chassis::Chassis(std::initializer_list<lemlib::ReversibleSmartPort> leftPorts,
                  std::initializer_list<lemlib::ReversibleSmartPort> rightPorts,
+                 bool swappedSides, 
                  lemlib::IMU* imu,
                  AngularVelocity outputVelocity,
                  Length trackWidth,
@@ -39,6 +40,7 @@ Chassis::Chassis(std::initializer_list<lemlib::ReversibleSmartPort> leftPorts,
                  VelocityController* leftController, VelocityController* rightController,
                  TrackingWheel* backTracker)
     : leftMotors(leftPorts,outputVelocity), rightMotors(rightPorts,outputVelocity), 
+      swappedSides(swappedSides),
       trackWidth(trackWidth),
       wheelDiameter(wheelDiameter), constraints(constraints),
       leftTracker(&leftMotors,wheelDiameter,-trackWidth/2),
@@ -193,7 +195,12 @@ void Chassis::setPose(units::Pose pose){
 
 units::Pose Chassis::getPose(){
     std::lock_guard<pros::Mutex> lock(mutex);
-    return odom.getPose();
+    auto pose = odom.getPose();
+    if(swappedSides) {
+        pose.x = -pose.x;
+        pose.orientation = -pose.orientation;
+    }
+    return pose;
 }
 
 void Chassis::tank(Number left, Number right){

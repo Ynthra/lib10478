@@ -16,6 +16,7 @@ enum intakeStates{
 	DESCORING
 };
 
+inline bool sortingEnabled = true;
 inline Number intakeMaxSpeed = 1;
 extern ringColors getColor();
 extern void intakeLoop(bool spin);

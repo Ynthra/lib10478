@@ -35,7 +35,7 @@ void intakeLoop(bool spin){
 	else settledTime = 0;
 	if(isStationary) stoppedTime+=10;
 	else stoppedTime = 0;
-	if((detectedColor == NONE) && optical.is_installed() && optical.get_proximity() > 240) {
+	if((sortingEnabled) && (detectedColor == NONE) && optical.is_installed() && optical.get_proximity() > 240) {
 		detectedColor = getColor();
 		if ((detectedColor != NONE) && (detectedColor != TEAMCOLOR)){
 			sorting = true;

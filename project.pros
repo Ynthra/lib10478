@@ -1,7 +1,7 @@
 {
   "py/object": "pros.conductor.project.Project",
   "py/state": {
-    "project_name": "skills",
+    "project_name": "red solo",
     "target": "v5",
     "templates": {
       "Eigen": {
@@ -517,7 +517,7 @@
       "after": "screen",
       "description": "Shoutout to John Queen",
       "icon": "clawbot",
-      "slot": 3
+      "slot": 1
     },
     "use_early_access": false
   }

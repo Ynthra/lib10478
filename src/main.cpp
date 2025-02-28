@@ -7,6 +7,7 @@
 #include "lib10478/lib10478.hpp"
 #include "lib10478/controller.hpp"
 #include "globals.hpp"
+#include "pros/adi.hpp"
 #include "pros/device.hpp"
 #include "pros/misc.hpp"
 #include "units/Angle.hpp"
@@ -62,7 +63,7 @@ void initialize()
 			std::to_string(pose.y.convert(in))
 			);
 		}
-		//std::cout <<pose.x.convert(in) << "," << pose.y.convert(in) << "\n";
+		std::cout <<pose.x.convert(in) << "," << pose.y.convert(in) << "\n";
 		//std::cout <<"(" <<pose.x.convert(in) << "," << pose.y.convert(in) << "),";
 
 		//pros::screen::print(pros::E_TEXT_MEDIUM,5,("back dist: " + std::to_string(horizontalWheel.getDistance().convert(in))).c_str());
@@ -80,17 +81,22 @@ void competition_initialize() {}
 //15.5 inch height
 //13.5 inch width
 void autonomous() {
-	skills();
-	//trueSoloWP();
+	//skills();
+	trueSoloWP();
 }
 
 bool usedIntake = false;
-void intakeControl(controller::Button button){
+void intakeControl(controller::Button button, controller::Button reverseButton, controller::Button stopSortButton){
 	usedIntake = button.releasedTimer < 13000;
 	if(button.pressed && intakePiston.is_extended()){
 		intakePiston.retract();
 	}
-	intakeLoop(button.pressing);
+	if (stopSortButton.pressed){
+		sortingEnabled = !sortingEnabled;
+		controller::master.rumble(".");
+	}
+	if(reverseButton.pressing) intake.move(-1);
+	else intakeLoop(button.pressing);
 }
 
 
@@ -119,7 +125,11 @@ void armControl(controller::Button mainButton, controller::Button hangButton){
 	const double kG = -1; //accounts for weight of arm
 
 	const Angle armAngle = armSensor.getAngle()-360_stDeg;
-	const double error = to_stDeg(from_stDeg(lbtarget)-armAngle);
+	Angle target = from_stDeg(lbtarget);
+	if(lbtarget == ALLIGNED){
+		target = from_stDeg(-91.5);
+	}
+	const double error = to_stDeg(target-armAngle);
 
 	//if(error < 1 && lbtarget == DOWN) arm.move(0);
 	arm.move(kG*sin(to_stDeg(armAngle)) + armPID.update(error));
@@ -131,9 +141,20 @@ void clampControl(controller::Button button){
 		clamp.toggle();
 	}
 }
-void doinkerControl(controller::Button button){
+pros::adi::Pneumatics* currentDoinker = &ldoinker;
+void doinkerControl(controller::Button button,controller::Button switchButton){
+	if (switchButton.pressed) {
+		controller::master.rumble(".");
+		currentDoinker->retract();
+		if(currentDoinker == &ldoinker){
+			currentDoinker = &rdoinker;
+		}
+		else{
+			currentDoinker = &ldoinker;
+		}
+	}
 	if(button.pressed){
-		ldoinker.toggle();
+		currentDoinker->toggle();
 	}
 }
 void intakePistonControl(controller::Button button){
@@ -155,7 +176,7 @@ void opcontrol()
 {
 	std::cout << "hi \n";
 	chassis.CancelMovement();
-	Controls control = SKILLS;
+	Controls control = MAIN;
 
 	if(startedDriver == false){
 		timer = pros::millis();
@@ -193,14 +214,14 @@ void opcontrol()
 						1, 8, 127, 0.1, 1));
 		
 		if(control == MAIN){
-			intakeControl(controller::L1);
+			intakeControl(controller::L1,controller::Down,controller::B);
 			armControl(controller::R2,controller::X);
 			clampControl(controller::R1);
-			doinkerControl(controller::L2);
+			doinkerControl(controller::L2,controller::Right);
 			intakePistonControl(controller::Up);
 		}
 		else if(control == SKILLS) {
-			intakeControl(controller::L1);
+			intakeControl(controller::L1,controller::Down,controller::B);
 			armControl(controller::R2,controller::X);
 			clampControl(controller::R1);
 			if(controller::L2.pressed){

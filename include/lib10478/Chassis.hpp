@@ -53,6 +53,7 @@ class Chassis : public StateMachine<ChassisState, ChassisState::IDLE>
 public:
     Chassis(std::initializer_list<lemlib::ReversibleSmartPort> leftPorts,
             std::initializer_list<lemlib::ReversibleSmartPort> rightPorts,
+            bool swappedSides,
             lemlib::IMU* imu,
             AngularVelocity outputVelocity,
             Length trackWidth,
@@ -82,6 +83,7 @@ public:
     TrackingWheel rightTracker;
     TrackingWheel leftTracker;
 private:
+    bool swappedSides;
     Length distTarget = 0_m;
     Odom odom;
     lemlib::IMU* imu;

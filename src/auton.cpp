@@ -14,9 +14,9 @@
 #include <atomic>
 #include <string>
 #include <sys/_intsup.h>
-constexpr int x = (TEAMCOLOR == BLUE)-(TEAMCOLOR == RED);
 
-void trueSoloWP(){
+
+void firstThreeSafe(){
 //30 deg measuring tool: lib10478::CubicBezier({17.071797_in, -20.000000_in}, {21.274170_in, -22.426757_in}, {21.279994_in, -22.430049_in}, {24.000000_in, -24.000000_in});
     auto start = pros::millis();
     chassis.setPose({55.5_in, -30.797_in,90_cDeg});
@@ -95,16 +95,16 @@ void trueSoloWP(){
     chassis.waitUntilSettled();
     auto now = pros::millis();
 
-    auto getThirdRing = chassis.generateProfile(
-        lib10478::CubicBezier({61.800000_in, 0.000000_in}, {46.273300_in, 0.000000_in}, {65.569811_in, 39.939623_in}, {19.562264_in, 40.845283_in})
-    );
+    //auto getThirdRing = chassis.generateProfile(
+    //    lib10478::CubicBezier({61.800000_in, 0.000000_in}, {46.273300_in, 0.000000_in}, {65.569811_in, 39.939623_in}, {19.562264_in, 40.845283_in})
+    //);
     pros::Task::delay_until(&now, 300);
     if(gotRing) {
         intakeLoop(true);
         pros::delay(250);
         intakeLoop(false);
     }
-    controller::master.set_text(2,0,std::to_string(chassis.getPose().x.convert(in)));
+    /**controller::master.set_text(2,0,std::to_string(chassis.getPose().x.convert(in)));
     chassis.followProfile(getThirdRing);
     pros::delay(200);
     intakeLoop(true);
@@ -118,17 +118,49 @@ void trueSoloWP(){
     waitUntilStored(4000);
     chassis.turnTo(chassis.getPose().angleTo({19.534862_in, 31.011143_in})+180_stDeg);
     chassis.waitUntilSettled();
-    clamp.extend(); //lift clamp to prep for goal
+    clamp.extend();
 
     chassis.followProfile(toLadder,{.followReversed=true});
     chassis.waitUntilDist(24_in);
-    clamp.retract(); //clamp goal
-    chassis.waitUntilSettled();
-    /**chassis.driveStraight(-0.8_tile,{.followReversed = true});
-    chassis.waitUntilSettled();
-    clamp.retract(); //clamp goal**/
+    clamp.retract(); 
+    chassis.waitUntilSettled(); **/
+}
 
-    //chassis.setPose({61.8_in,0_in,chassis.getPose().orientation});
+void trueSoloWP(){
+        auto start = pros::millis();
+    chassis.setPose({55.5_in, -30.797_in,90_cDeg});
+
+    auto getGoal = chassis.generateProfile(
+        lib10478::CubicBezier({55.500000_in, -30.797000_in}, {40.000000_in, -30.797000_in}, {43.026660_in, -32.307406_in}, {31.601750_in, -25.877330_in})
+    );
+    chassis.followProfile(getGoal,{.followReversed=true});
+
+    auto getFirstRing = chassis.generateProfile(
+        lib10478::CubicBezier({31.601750_in, -25.877330_in}, {44.899275_in, -33.347200_in}, {32.099995_in, -38.563995_in}, {23.144591_in, -43.073010_in})
+    );
+    chassis.waitUntilSettled(); delete getGoal;
+    pros::delay(100);
+    clamp.retract(); //clamp goal
+    pros::delay(50);
+    chassis.followProfile(getFirstRing);
+    pros::delay(100);
+    intakeLoop(true);
+
+    auto getSecondRing = chassis.generateProfile(
+        lib10478::CubicBezier({23.144591_in, -43.073010_in}, {38.857432_in, -41.334206_in}, {70.760205_in, -40.955626_in}, {59.724748_in, -14.688131_in})
+    );
+    chassis.waitUntilSettled(); delete getFirstRing;
+    pros::delay(200);
+    chassis.turnTo(chassis.getPose().angleTo({43.810859_in, -22.312341_in}));
+    chassis.waitUntilSettled();
+
+    chassis.followProfile(getSecondRing);
+    pros::delay(200);
+    intakeLoop(false);
+    clamp.extend(); //drop goal
+    pros::delay(100);
+
+    chassis.waitUntilSettled(); delete getSecondRing;
 }
 
 void skills(){
