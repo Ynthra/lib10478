@@ -12,7 +12,7 @@ constexpr Length wheelDiameter = 2.776025236593060_in;
 constexpr AngularVelocity outputVelocity = 450_rpm;
 constexpr LinearVelocity maxVel = toLinear<AngularVelocity>(outputVelocity, wheelDiameter);
 constexpr Power power = 6 * 11_watt;
-constexpr Mass mass = 8_kg;
+constexpr Mass mass = 10_kg;
 constexpr LinearAcceleration maxAccel = power / maxVel / mass;
 constexpr LinearAcceleration maxDeccel = maxAccel;
 constexpr Length trackWidth = 12.5_in;
@@ -43,4 +43,4 @@ enum lbTargets{
 };
 inline lbTargets lbtarget = DOWN;
 
-#define TEAMCOLOR BLUE
+#define TEAMCOLOR RED

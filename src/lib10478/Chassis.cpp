@@ -87,6 +87,15 @@ Profile* Chassis::generateProfile(const virtualPath& path, Length dd, std::optio
         profile[i].velocity = vel;
     }
 
+    if(swappedSides){
+        for (int i = profile.size()-1; i >= 0; i--){
+            auto pose = profile[i].pose;
+            pose.x = -pose.x;
+            pose.orientation = -pose.orientation;
+            profile[i].pose = pose;
+            profile[i].curvature = -profile[i].curvature;
+        }
+    }
     this->constraints = prevConstraints;
     return new Profile(profile,dd);
 }
@@ -196,10 +205,6 @@ void Chassis::setPose(units::Pose pose){
 units::Pose Chassis::getPose(){
     std::lock_guard<pros::Mutex> lock(mutex);
     auto pose = odom.getPose();
-    if(swappedSides) {
-        pose.x = -pose.x;
-        pose.orientation = -pose.orientation;
-    }
     return pose;
 }
 
@@ -261,10 +266,10 @@ void Chassis::init() {
             pros::delay(10);
         }
         if(imu->isConnected()){
-            controller::master.rumble(".");
+            controller::master.set_text(2,0,"calibrated");
         }
         else{
-            controller::master.rumble("..");
+            controller::master.set_text(2,0,"fail");
         }
         odom.setPose({0_m,0_m,0_cDeg});
         task = new pros::Task ([this] {

@@ -81,8 +81,18 @@ void competition_initialize() {}
 //15.5 inch height
 //13.5 inch width
 void autonomous() {
+	//twoLadder();
 	//skills();
 	trueSoloWP();
+	/**chassis.tank(-1,-1);
+	pros::delay(400);
+	chassis.tank(0, 0);
+	pros::delay(1000);
+	clamp.toggle();
+	pros::delay(500);
+	intake.move(127);
+	pros::delay(500);
+	intake.move(0);**/
 }
 
 bool usedIntake = false;
