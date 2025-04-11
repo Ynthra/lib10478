@@ -132,14 +132,19 @@ class Controller {
         return sticks[stick];
     }
     
-    static Controller master;
-    static Controller partner;
+    static Controller& master() {
+        static Controller instance{MASTER};
+        return instance;
+    }
+
+    static Controller& partner() {
+        static Controller instance{PARTNER};
+        return instance;
+    }
 
     static void updateAll() {
-        master.update();
-        partner.update();
+        master().update();
+        partner().update();
     }
 };
 
-inline Controller Controller::master(Controllers::MASTER);
-inline Controller Controller::partner(Controllers::PARTNER);

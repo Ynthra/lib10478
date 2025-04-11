@@ -17,7 +17,7 @@ void opcontrol()
     while (true) {
         Controller::updateAll();
 
-        std::cout << pros::millis() - now<< "," << Controller::master[LEFT_Y] << "\n";
+        std::cout << pros::millis() - now<< "," << Controller::master()[LEFT_Y] << "\n";
         pros::delay(5);
     }
 }
