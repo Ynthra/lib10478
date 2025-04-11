@@ -22,14 +22,12 @@ enum ProfileType {
 class ProfileGenerator {
 
 private:
-    Constraints constraints;
     ProfileType profileType;
     Length trackWidth;
-
+    Constraints constraints;
 public:
     ProfileGenerator(ProfileType profileType, Constraints constraints, Length trackWidth)
         : constraints(constraints), profileType(profileType), trackWidth(trackWidth) {}
-    
     Profile* generateProfile(const virtualPath& path, std::optional<Constraints> constraints = std::nullopt);
 };
 

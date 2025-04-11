@@ -72,7 +72,7 @@ Profile* ProfileGenerator::generateProfile(const virtualPath& path, std::optiona
 
     }
 
-    LinearVelocity vel_end = 0_mps;
+    vel = 0_mps;
     for (int i = profile.size() - 1; i >= 0; i--) {
         if (i > 0) {
             // For segment [i-1 → i], use the corresponding midpoint curvature.
@@ -80,12 +80,12 @@ Profile* ProfileGenerator::generateProfile(const virtualPath& path, std::optiona
             const LinearAcceleration maxDecel = (2 * this->constraints.maxDecel) /
                 (units::abs(kMid) * trackWidth + 2);
 
-            vel_end = units::min(
+            vel = units::min(
                 profile[i].velocity,
-                units::sqrt(vel_end * vel_end + 2 * maxDecel * this->constraints.dd)
+                units::sqrt(vel * vel + 2 * maxDecel * this->constraints.dd)
             );
         }
-        profile[i].velocity = vel_end;
+        profile[i].velocity = vel;
     }
 
     this->constraints = prevConstraints;

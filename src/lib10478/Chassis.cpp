@@ -36,69 +36,19 @@ Chassis::Chassis(std::initializer_list<lemlib::ReversibleSmartPort> leftPorts,
                  lemlib::IMU* imu,
                  AngularVelocity outputVelocity,
                  Length trackWidth,
-                 Length wheelDiameter, Constraints constraints, 
+                 Length wheelDiameter, 
                  VelocityController* leftController, VelocityController* rightController,
                  TrackingWheel* backTracker)
     : leftMotors(leftPorts,outputVelocity), rightMotors(rightPorts,outputVelocity), 
       swappedSides(swappedSides),
       trackWidth(trackWidth),
-      wheelDiameter(wheelDiameter), constraints(constraints),
+      wheelDiameter(wheelDiameter),
       leftTracker(&leftMotors,wheelDiameter,-trackWidth/2),
       rightTracker(&rightMotors,wheelDiameter,trackWidth/2),
       imu(imu),
       odom(imu, &leftTracker, &rightTracker, backTracker), 
       leftController(leftController),rightController(rightController) {}
 
-Profile* Chassis::generateProfile(const virtualPath& path, Length dd, std::optional<Constraints> constraints)
-{
-    Length dist = dd;
-    LinearVelocity vel = 0_mps; //inital max velocity
-    double t = 0;
-
-    std::vector<ProfilePoint> profile;
-
-    Constraints prevConstraints = this->constraints;
-    if(constraints.has_value()) this->constraints = constraints.value();
-
-    while (t <= 1)
-    {
-        const units::V2Position point = path.getPoint(t);
-        const units::V2Position deriv = path.getDerivative(t);
-        const Curvature curvature = path.getCurvature(t);
-        
-        t += dd.internal() / deriv.magnitude().internal();
-        const LinearAcceleration maxAccel = (2*this->constraints.maxAccel)/(units::abs(curvature)*this->trackWidth+2);
-
-        const LinearVelocity maxSlipVel = units::sqrt(9.81_mps2 * this->constraints.frictionCoefficent / curvature);
-        const LinearVelocity maxTurnVel = (2*this->constraints.velLimits.at(dist)) / (units::abs(curvature)*this->trackWidth+2);
-        const LinearVelocity maxAccelVel = units::sqrt(vel * vel + 2 * maxAccel * dd);
-        vel = units::min(units::min(maxSlipVel,maxTurnVel), maxAccelVel);
-
-        profile.push_back(ProfilePoint({point,units::atan2(deriv.y, deriv.x)}, vel, curvature, dist));
-        dist += dd;
-    }
-
-    vel = 0_mps; //ending max Velocity
-
-    for (int i = profile.size()-1; i >= 0; i--){
-        const ProfilePoint profilePoint = profile[i];
-        const LinearAcceleration maxDecel = (2*this->constraints.maxDecel)/(units::abs(profilePoint.curvature)*this->trackWidth+2);
-        vel = units::min(profilePoint.velocity, units::sqrt(vel * vel + 2 * maxDecel * dd));
-        profile[i].velocity = vel;
-    }
-
-    if(swappedSides){
-        for (int i = profile.size()-1; i >= 0; i--){
-            auto pose = profile[i].pose;
-            pose.x = -pose.x;
-            pose.orientation = -pose.orientation;
-            profile[i].pose = pose;
-            profile[i].curvature = -profile[i].curvature;
-        }
-    }
-    this->constraints = prevConstraints;
-    return new Profile(profile,dd);
-}
 
 ChassisSpeeds Chassis::RAMSETE(ChassisSpeeds speeds, units::Pose target, units::Pose current)
 {

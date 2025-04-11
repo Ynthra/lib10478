@@ -57,7 +57,7 @@ public:
             lemlib::IMU* imu,
             AngularVelocity outputVelocity,
             Length trackWidth,
-            Length wheelDiameter, Constraints constraints, 
+            Length wheelDiameter, 
             VelocityController* leftController, VelocityController* rightController,
             TrackingWheel* backTracker);
     
@@ -101,7 +101,6 @@ private:
     ChassisSpeeds RAMSETE(ChassisSpeeds speeds, units::Pose target, units::Pose current);
     std::pair<AngularVelocity, AngularVelocity> toMotorSpeeds(ChassisSpeeds speeds);
     Length wheelDiameter;
-    Constraints constraints;
     Length trackWidth;
 };
 
