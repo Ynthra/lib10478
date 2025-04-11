@@ -1,30 +1,67 @@
 #pragma once
 #include "api.h"
 #include "pros/misc.h"
+#include <array>
+#include <vector>
 
-namespace controller {
-    inline pros::Controller master(pros::E_CONTROLLER_MASTER);
+enum Buttons {
+    L1 = 6,
+    L2,
+    R1,
+    R2,
+    UP,
+    DOWN,
+    LEFT,
+    RIGHT,
+    X,
+    B,
+    Y,
+    A,
+    POWER
+};
+enum Controllers{
+    MASTER = 0,
+    PARTNER
+};
+enum Sticks{
+    LEFT_X = 0,
+    LEFT_Y,
+    RIGHT_X,
+    RIGHT_Y
+};
+
+class Controller {
+    private:
     class Button{
         private:
-        bool prevpressing = false;
-        const pros::controller_digital_e_t button;
+        bool prevPressing;
+        const Buttons button;
+        Controllers controller;
 
-        int switchedTime = 0;
+        uint32_t switchedTime = 0;
         public:
-        bool pressing = false;
-        bool pressed = false;
-        bool released = false;
-        int heldTimer = 0;
-        int releasedTimer = 0;
+        bool pressing;
+        bool pressed;
+        bool released;
+        uint32_t heldTimer;
+        uint32_t releasedTimer;
 
-        Button(pros::controller_digital_e_t button)
-        :button(button)
-        {
+        Button(Buttons button, Controllers controller = Controllers::MASTER)
+        :button(button), controller(controller)
+        {reset();}
+        void reset(){
+            this->prevPressing = false;
+            this->pressing = false;
+            this->pressed = false;
+            this->released = false;
+            this->heldTimer = 0;
+            this->releasedTimer = 0;
         }
         void update(){
-            pressing = master.get_digital(button);
+            pressing = pros::c::controller_get_digital(pros::controller_id_e_t(controller)
+                                                        , pros::controller_digital_e_t(button));
 
-            if(pressing != prevpressing){
+            if(pressing != prevPressing){
                 pressed = pressing;
                 released = !pressing;
                 switchedTime = pros::millis();
@@ -41,45 +78,62 @@ namespace controller {
                 releasedTimer = pros::millis()-switchedTime;     
             }
 
-            prevpressing = pressing;
+            prevPressing = pressing;
         }
     };
-    inline Button R1(pros::E_CONTROLLER_DIGITAL_R1);
-    inline Button R2(pros::E_CONTROLLER_DIGITAL_R2);
-    inline Button L1(pros::E_CONTROLLER_DIGITAL_L1);
-    inline Button L2(pros::E_CONTROLLER_DIGITAL_L2);
-    inline Button X(pros::E_CONTROLLER_DIGITAL_X);
-    inline Button Y(pros::E_CONTROLLER_DIGITAL_Y);
-    inline Button A(pros::E_CONTROLLER_DIGITAL_A);
-    inline Button B(pros::E_CONTROLLER_DIGITAL_B);
-    inline Button Up(pros::E_CONTROLLER_DIGITAL_UP);
-    inline Button Down(pros::E_CONTROLLER_DIGITAL_DOWN);
-    inline Button Left(pros::E_CONTROLLER_DIGITAL_LEFT);
-    inline Button Right(pros::E_CONTROLLER_DIGITAL_RIGHT);
+    std::vector<Button> buttons;
+    Controllers controller;
+    bool connected = true;
 
-    inline void update(){
-        R2.update();
-        L1.update();
-        L2.update();
-        R1.update();
-        Up.update();
-        A.update();
-        X.update();
-        Y.update();  
-        B.update();
-        Right.update();
-        Left.update();
-        Down.update();
-    }
+    void update() {
+        bool connected = pros::c::controller_is_connected(pros::controller_id_e_t(this->controller));
+        if (!connected) {
+            if(this->connected){
+                for (auto& button : buttons) {
+                    button.reset();
+                }
+            }
     
-    inline float driveCurve(float input, float deadzone, float scale, float maxjoy, float minvolt, float maxvolt) {
-        if(fabs(input)>deadzone){
-            return (input *
-        (powf(2.718, -(scale / (0.1* maxjoy))) + powf(2.718, (fabs(input) - maxjoy) / (0.1*maxjoy)) * (1 - powf(2.718, -(scale / (0.1*maxjoy))))) 
-        *(1-(minvolt/maxvolt)) * (maxvolt/maxjoy) + minvolt * (input<0?-1:1));
         }
         else{
-            return 0;
+            for (auto& button : buttons) {
+                button.update();
+            }
+        }
+        this->connected = connected;
+    }
+
+    public:
+
+    Controller(const Controller&) = delete;
+    Controller& operator=(const Controller&) = delete;
+
+    Controller(Controllers controller = Controllers::MASTER)
+        : controller(controller) 
+    {
+        for (int i = Buttons::L1; i <= Buttons::POWER; i++) {
+            buttons.push_back(Button(Buttons(i), controller));
         }
     }
-}
+
+
+    const Button& operator[](Buttons button) const {
+        return buttons[button - L1];
+    }
+    
+    static Controller& master() {
+        static Controller instance{MASTER};
+        return instance;
+    }
+
+    static Controller& partner() {
+        static Controller instance{PARTNER};
+        return instance;
+    }
+
+
+    static void updateAll() {
+        master().update();
+        partner().update();
+    }
+};

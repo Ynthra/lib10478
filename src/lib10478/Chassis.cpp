@@ -222,7 +222,7 @@ void Chassis::findWidth(Angle rotations){
     this->rightMotors.setAngle(0_stDeg);
 
     while (true) {
-        controller::update();
+        /**controller::update();
         if(controller::Right.pressing){
             this->leftMotors.move(50_percent);
             this->rightMotors.move(-50_percent);
@@ -240,7 +240,7 @@ void Chassis::findWidth(Angle rotations){
             toLinear<Angle>(this->rightMotors.getAngle(),this->wheelDiameter))/
             rotations.internal()).convert(in)));
         if(controller::A.pressed) break;
-        pros::delay(50);
+        pros::delay(50);**/
     }
 }
 
@@ -251,11 +251,11 @@ void Chassis::findDiameter(Length distance){
     this->leftMotors.setAngle(0_stDeg);
     this->rightMotors.setAngle(0_stDeg);
     while (true) {
-        controller::update();
+        /**controller::update();
         controller::master.set_text(2,0,std::to_string(2*distance.convert(in)/
         ((this->leftMotors.getAngle().internal() + this->rightMotors.getAngle().internal())/2)));
         if(controller::A.pressed) break;
-        pros::delay(50);
+        pros::delay(50);**/
     }
 }
 
@@ -265,12 +265,12 @@ void Chassis::init() {
         while(imu->isCalibrating()){
             pros::delay(10);
         }
-        if(imu->isConnected()){
+        /**if(imu->isConnected()){
             controller::master.set_text(2,0,"calibrated");
         }
         else{
             controller::master.set_text(2,0,"fail");
-        }
+        }**/
         odom.setPose({0_m,0_m,0_cDeg});
         task = new pros::Task ([this] {
 
