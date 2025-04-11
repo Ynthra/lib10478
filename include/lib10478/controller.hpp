@@ -83,6 +83,7 @@ class Controller {
         }
     };
     std::vector<Button> buttons;
+    std::vector<double> sticks;
     Controllers controller;
     bool connected = true;
 
@@ -93,12 +94,17 @@ class Controller {
                 for (auto& button : buttons) {
                     button.reset();
                 }
+                for(auto& stick: sticks){
+                    stick = 0;
+                }
             }
-    
         }
         else{
             for (auto& button : buttons) {
                 button.update();
+            }
+            for(int i = LEFT_X; i <= RIGHT_Y; i++){
+                sticks[i] = pros::c::controller_get_analog(pros::controller_id_e_t(this->controller), pros::controller_analog_e_t(i))/127.0;
             }
         }
         this->connected = connected;
@@ -121,6 +127,9 @@ class Controller {
 
     const Button& operator[](Buttons button) const {
         return buttons[button - L1];
+    }
+    const double operator[](Sticks stick) const {
+        return sticks[stick];
     }
     
     static Controller master;

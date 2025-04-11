@@ -12,5 +12,12 @@ void autonomous() {}
 
 void opcontrol()
 {
-    bool x = Controller::master[L1].pressing;
+
+    auto now = pros::millis();
+    while (true) {
+        Controller::updateAll();
+
+        std::cout << pros::millis() - now<< "," << Controller::master[LEFT_Y] << "\n";
+        pros::delay(5);
+    }
 }
