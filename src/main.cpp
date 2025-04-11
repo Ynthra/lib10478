@@ -1,4 +1,5 @@
 #include "main.h"
+#include "lib10478/controller.hpp"
 #include <cmath>
 
 void initialize() {}
@@ -11,4 +12,5 @@ void autonomous() {}
 
 void opcontrol()
 {
+    bool x = Controller::master[L1].pressing;
 }

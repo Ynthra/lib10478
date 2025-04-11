@@ -1,6 +1,7 @@
 #pragma once
 #include "api.h"
 #include "pros/misc.h"
+#include "units/units.hpp"
 #include <array>
 #include <vector>
 
@@ -103,37 +104,33 @@ class Controller {
         this->connected = connected;
     }
 
-    public:
-
-    Controller(const Controller&) = delete;
-    Controller& operator=(const Controller&) = delete;
-
     Controller(Controllers controller = Controllers::MASTER)
-        : controller(controller) 
+    : controller(controller)
     {
         for (int i = Buttons::L1; i <= Buttons::POWER; i++) {
             buttons.push_back(Button(Buttons(i), controller));
         }
     }
 
+    public:
+
+    Controller(const Controller&) = delete;
+    Controller& operator=(const Controller&) = delete;
+
+
 
     const Button& operator[](Buttons button) const {
         return buttons[button - L1];
     }
     
-    static Controller& master() {
-        static Controller instance{MASTER};
-        return instance;
-    }
-
-    static Controller& partner() {
-        static Controller instance{PARTNER};
-        return instance;
-    }
-
+    static Controller master;
+    static Controller partner;
 
     static void updateAll() {
-        master().update();
-        partner().update();
+        master.update();
+        partner.update();
     }
 };
+
+inline Controller Controller::master(Controllers::MASTER);
+inline Controller Controller::partner(Controllers::PARTNER);
