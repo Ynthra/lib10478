@@ -22,7 +22,7 @@ Profile* ProfileGenerator::generateProfile(const virtualPath& path, std::optiona
     units::V2Position deriv = path.getDerivative(t);
     Curvature curvature = path.getCurvature(t);
 
-    // Add the initial profile point using curvature at t = 0.
+    // Add the initial profile point at t = 0.
     profile.push_back(ProfilePoint(
         {point, units::atan2(deriv.y, deriv.x)},
         vel,

@@ -95,7 +95,7 @@ class Controller {
                     button.reset();
                 }
                 for(auto& stick: sticks){
-                    stick = 0;
+                    stick = 0.0;
                 }
             }
         }
@@ -111,10 +111,12 @@ class Controller {
     }
 
     Controller(Controllers controller = Controllers::MASTER)
-    : controller(controller)
-    {
+    : controller(controller) {
         for (int i = Buttons::L1; i <= Buttons::POWER; i++) {
             buttons.push_back(Button(Buttons(i), controller));
+        }
+        for(int i = LEFT_X; i <= RIGHT_Y; i++){
+            sticks.push_back(0.0);
         }
     }
 
@@ -132,19 +134,14 @@ class Controller {
         return sticks[stick];
     }
     
-    static Controller& master() {
-        static Controller instance{MASTER};
-        return instance;
-    }
-
-    static Controller& partner() {
-        static Controller instance{PARTNER};
-        return instance;
-    }
+    static Controller master;
+    static Controller partner;
 
     static void updateAll() {
-        master().update();
-        partner().update();
+        master.update();
+        partner.update();
     }
 };
 
+inline Controller Controller::master(MASTER);
+inline Controller Controller::partner(PARTNER);

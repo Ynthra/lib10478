@@ -86,11 +86,11 @@ std::pair<AngularVelocity, AngularVelocity> Chassis::toMotorSpeeds(ChassisSpeeds
 void Chassis::driveStraight(Length distance,followParams params){
     auto pose = odom.getPose();
     units::Vector2D<Number> direction = units::Vector2D<Number>::fromPolar(pose.orientation, 1);
-    const auto profile =  this->generateProfile(CubicBezier(pose,
+    /**const auto profile =  this->generateProfile(CubicBezier(pose,
                                                        pose + 0.33 * distance * direction,
                                                        pose + 0.66 * distance * direction,
-                                                       pose + distance * direction),0.1_cm);
-    followProfile(profile,params);
+                                                       pose + distance * direction),0.1_cm);**/
+    //followProfile(profile,params);
 }
 void Chassis::followProfile(Profile *profile, followParams params)
 {
@@ -120,7 +120,7 @@ void Chassis::turnTo(Angle angle, turnDirection direction){
     const Length distance = toLinear<Angle>(getError(angle, pose.orientation, direction),this->trackWidth);
     this->direction = turnDirection(sgn(distance.internal()));
     this->targetAngle = angle;
-    currentProfile = this->generateProfile(CubicBezier({0_m,0_m},{0_m,0.33*distance},{0_m,0.66*distance},{0_m,distance}));
+    //currentProfile = this->generateProfile(CubicBezier({0_m,0_m},{0_m,0.33*distance},{0_m,0.66*distance},{0_m,distance}));
     setState(ChassisState::TURN);
 }
 
