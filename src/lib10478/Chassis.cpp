@@ -6,6 +6,7 @@
 #include "lib10478/Odom.hpp"
 #include "hardware/Motor/MotorGroup.hpp"
 #include "pros/imu.h"
+#include "pros/rtos.h"
 #include "pros/rtos.hpp"
 #include "units/Angle.hpp"
 #include "units/Pose.hpp"
@@ -272,6 +273,32 @@ void Chassis::calibrateIMU(){
     }
 }
 void Chassis::init() {
+    if(this->task == nullptr) {
+        calibrateIMU();
+        this->odom.setPose({0_m,0_m,0_cDeg});
+        this->task = new pros::Task([this] {
+            std::uint32_t now = pros::millis();
+            
+            while(true) {
+                this->mutex.take();
+                this->odom.update();
+                
+                switch (getState()) {
+                    case ChassisState::IDLE:
+                        break;
+                    case ChassisState::TURN:
+                        break;
+                    case ChassisState::FOLLOW:
+                        break;
+                }
+
+                this->mutex.give();
+                pros::Task::delay_until(&now, 10);
+            }
+            
+
+        },TASK_PRIORITY_DEFAULT+2);
+    }
     /**if (task == nullptr) {
         imu->calibrate();
         while(imu->isCalibrating()){

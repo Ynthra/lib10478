@@ -1,8 +1,10 @@
 #pragma once
 #include "api.h"
 #include "pros/misc.h"
+#include "pros/rtos.hpp"
 #include "units/units.hpp"
 #include <array>
+#include <mutex>
 #include <vector>
 
 enum Buttons {
@@ -85,9 +87,11 @@ class Controller {
     std::vector<Button> buttons;
     std::vector<double> sticks;
     Controllers controller;
+    pros::Mutex mutex;
     bool connected = true;
 
     void update() {
+        std::lock_guard<pros::Mutex> lock(this->mutex);
         bool connected = pros::c::controller_is_connected(pros::controller_id_e_t(this->controller));
         if (!connected) {
             if(this->connected){
@@ -127,10 +131,12 @@ class Controller {
 
 
 
-    const Button& operator[](Buttons button) const {
+    const Button& operator[](Buttons button) {
+        std::lock_guard<pros::Mutex> lock(this->mutex);
         return buttons[button - L1];
     }
-    const double operator[](Sticks stick) const {
+    const double operator[](Sticks stick) {
+        std::lock_guard<pros::Mutex> lock(this->mutex);
         return sticks[stick];
     }
     
