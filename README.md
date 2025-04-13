@@ -8,5 +8,7 @@
 - [this book](https://controls-in-frc.link/) for RAMSETE explanation
 - deepseek for vibecoding the whole path planner 🐐
 
-pretty sure there's undefined behaviour somewhere btw so don't use this code 💀
-also my fault for the inconsistent formatting / naming
+Pretty sure there's undefined behaviour somewhere btw so don't use this code 💀.
+Also my fault for the inconsistent formatting / naming.
+# 
+Check [here](https://github.com/Ynthra/lib10478/tree/183daaee0ecbc13e4baaf4a6dc1e99542810931a) for completed, working version (what was used at nationals)
