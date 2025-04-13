@@ -1,6 +1,8 @@
 #pragma once
 #include <cmath>
+#include <cstdlib>
 #include <queue>
+#include "units/Angle.hpp"
 
 inline double sinc(double x){
     if (std::abs(x) < 1e-9) {
@@ -33,7 +35,25 @@ private:
     double sum;
 };
 
+enum turnDirection{
+    CW = -1,
+    CCW = 1,
+    AUTO = 0
+};
 
+inline Angle getAngularError(Angle target, Angle position, turnDirection direction) {
+    Angle error = units::remainder(target - position, 1_stRot);
+    if(direction == CCW && error < 0_stRot) error += 1_stRot;
+    else if(direction == CW && error > 0_stRot) error -= 1_stRot;
+    return error;
+}
+
+// https://www.desmos.com/calculator/7setziwlwf
+inline double driveCurve(double input, double scale = 1.5){
+    return powf(2.71828,(std::abs(input) - 1) * scale);
+}
+
+//silly function for my silly intake code at nats
 inline int roundUpToNearestMultiple(int num, int multiple, int thresh) {
     // Find the nearest multiple greater than or equal to num
     int remainder = num % multiple;

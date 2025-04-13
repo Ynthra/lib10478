@@ -38,7 +38,7 @@ class MotorGroup : public Encoder {
          * }
          * @endcode
          */
-        MotorGroup(std::initializer_list<ReversibleSmartPort> ports, AngularVelocity outputVelocity);
+        MotorGroup(const std::initializer_list<ReversibleSmartPort>& ports, AngularVelocity outputVelocity);
         /**
          * @brief MotorGroup copy constructor
          *

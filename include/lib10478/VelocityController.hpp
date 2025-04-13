@@ -7,12 +7,14 @@ namespace lib10478 {
 class VelocityController{
     private:
         double kV, kAU, kAD, kS, kP;
-        mutable AngularVelocity prevTargetVel = 0_radps;
+        mutable double prevTargetVel = 0;
+        mutable double prevVel = 0;
+        mutable uint32_t timestamp = 0;
     public:
 
         VelocityController(double kV, double kAU, double kAD, double kS, double kP = 0);
 
-        Number getPower(AngularVelocity velocity, AngularVelocity currentVelocity) const;
+        Number getPower(double velocity, double currentVelocity) const;
 };
 
 }// namespace lib10478

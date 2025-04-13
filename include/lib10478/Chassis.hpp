@@ -1,4 +1,5 @@
 #pragma once
+#include "hardware/IMU/V5InertialSensor.hpp"
 #include "lib10478/Odom.hpp"
 #include "pros/rtos.hpp"
 #include "units/Pose.hpp"
@@ -13,6 +14,7 @@
 #include "Profile.hpp"
 #include "StateMachine.hpp"
 #include "VelocityController.hpp"
+#include "Math.hpp"
 namespace lib10478
 {
 
@@ -35,11 +37,6 @@ struct followParams
     bool followReversed = false;
 };
 
-enum turnDirection{
-    CW = -1,
-    CCW = 1,
-    AUTO = 0
-};
 
 enum class ChassisState{
     IDLE, FOLLOW, TURN
@@ -54,11 +51,11 @@ public:
     Chassis(std::initializer_list<lemlib::ReversibleSmartPort> leftPorts,
             std::initializer_list<lemlib::ReversibleSmartPort> rightPorts,
             bool swappedSides,
-            lemlib::IMU* imu,
+            lemlib::V5InertialSensor* imu,
             AngularVelocity outputVelocity,
             Length trackWidth,
             Length wheelDiameter, 
-            VelocityController* leftController, VelocityController* rightController,
+            VelocityController* linearController, VelocityController* angularController,
             TrackingWheel* backTracker);
     
     lemlib::MotorGroup leftMotors;
@@ -75,18 +72,23 @@ public:
     void setPose(units::Pose pose);
     units::Pose getPose();
 
-    void tank(Number left, Number right);
+    void tank(AngularVelocity maxVel, double scale = 1.5);
+    void moveVel(ChassisSpeeds speeds, LinearVelocity leftVel, LinearVelocity rightVel);
+
+    std::pair<LinearVelocity, LinearVelocity> getVel();
+    
+    void move(Number left, Number right);
+
     void findWidth(Angle rotations);
     void findDiameter(Length distance);
 
-    Angle getError(Angle target, Angle curent, turnDirection direction);
     TrackingWheel rightTracker;
     TrackingWheel leftTracker;
 private:
     bool swappedSides;
     Length distTarget = 0_m;
     Odom odom;
-    lemlib::IMU* imu;
+    lemlib::V5InertialSensor* imu;
     pros::Task* task = nullptr;
     pros::Mutex mutex;
     Profile *currentProfile = nullptr;
@@ -95,11 +97,17 @@ private:
 
     turnDirection direction;
     Angle targetAngle = 0_stDeg;
-    VelocityController* leftController;
-    VelocityController* rightController;
+    VelocityController* linearController;
+    VelocityController* angularController;
+
+    Angle leftPrev = 0_stDeg;
+    Angle rightPrev = 0_stDeg;
+    Time timestamp = 0_msec;
     
     ChassisSpeeds RAMSETE(ChassisSpeeds speeds, units::Pose target, units::Pose current);
     std::pair<AngularVelocity, AngularVelocity> toMotorSpeeds(ChassisSpeeds speeds);
+    void calibrateIMU();
+    
     Length wheelDiameter;
     Length trackWidth;
 };

@@ -3,6 +3,8 @@
 #include "hardware/IMU/V5InertialSensor.hpp"
 #include "lib10478/Chassis.hpp"
 #include "lib10478/controller.hpp"
+#include "units/Angle.hpp"
+#include "units/units.hpp"
 #include <cmath>
 
 void initialize() {}
@@ -31,7 +33,7 @@ void opcontrol()
     while (true) {
         Controller::updateAll();
 
-        chassis.tank(Controller::master[LEFT_Y],Controller::master[RIGHT_Y]);
+        chassis.tank(550_rpm);
         
         if(Controller::master[L1].pressing){
             //spin intake

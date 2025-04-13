@@ -1,13 +1,11 @@
 #include "Chassis.hpp"
 #include "Profile.hpp"
-#include "bezier.hpp"
+#include "controller.hpp"
+#include "hardware/IMU/V5InertialSensor.hpp"
 #include "hardware/Port.hpp"
 #include "lib10478/Odom.hpp"
 #include "hardware/Motor/MotorGroup.hpp"
-#include "pros/adi.h"
-#include "pros/imu.hpp"
-#include "pros/misc.h"
-#include "pros/rtos.h"
+#include "pros/imu.h"
 #include "pros/rtos.hpp"
 #include "units/Angle.hpp"
 #include "units/Pose.hpp"
@@ -15,16 +13,11 @@
 #include "units/Pose.hpp"
 #include "units/units.hpp"
 #include <cmath>
-#include <compare>
-#include <cstdint>
 #include <cstdio>
+#include <cstdlib>
 #include <math.h>
 #include <mutex>
-#include <optional>
-#include <string>
 #include <utility>
-#include <vector>
-#include "lib10478/controller.hpp"
 #include "lib10478/Math.hpp"
 
 
@@ -33,11 +26,11 @@ using namespace lib10478;
 Chassis::Chassis(std::initializer_list<lemlib::ReversibleSmartPort> leftPorts,
                  std::initializer_list<lemlib::ReversibleSmartPort> rightPorts,
                  bool swappedSides, 
-                 lemlib::IMU* imu,
+                 lemlib::V5InertialSensor* imu,
                  AngularVelocity outputVelocity,
                  Length trackWidth,
                  Length wheelDiameter, 
-                 VelocityController* leftController, VelocityController* rightController,
+                 VelocityController* linearController, VelocityController* angularController,
                  TrackingWheel* backTracker)
     : leftMotors(leftPorts,outputVelocity), rightMotors(rightPorts,outputVelocity), 
       swappedSides(swappedSides),
@@ -47,8 +40,7 @@ Chassis::Chassis(std::initializer_list<lemlib::ReversibleSmartPort> leftPorts,
       rightTracker(&rightMotors,wheelDiameter,trackWidth/2),
       imu(imu),
       odom(imu, &leftTracker, &rightTracker, backTracker), 
-      leftController(leftController),rightController(rightController) {}
-
+      linearController(linearController),angularController(angularController) {}
 
 ChassisSpeeds Chassis::RAMSETE(ChassisSpeeds speeds, units::Pose target, units::Pose current)
 {
@@ -103,22 +95,14 @@ void Chassis::followProfile(Profile *profile, followParams params)
     setState(ChassisState::FOLLOW);
 }
 
-Angle Chassis::getError(Angle target, Angle position, turnDirection direction) {
-    // Wrap the angle to be within 0pi and 2pi radians
-    target = units::mod(units::mod(target, 1_stRot) + 1_stRot, 1_stRot);
-    position = units::mod(units::mod(position, 1_stRot) + 1_stRot, 1_stRot);
 
-    Angle error = target - position;
-    if (direction == AUTO) return from_stDeg(std::remainder(to_stDeg(error), 360));
-    if (direction == CCW) return error < 0_stRot ? error + 1_stRot : error;
-    else return error > 0_stRot ? error - 1_stRot : error;
-}
+
 int turnLoops;
 void Chassis::turnTo(Angle angle, turnDirection direction){
     std::lock_guard<pros::Mutex> lock(mutex);
     const units::Pose pose = odom.getPose();
-    const Length distance = toLinear<Angle>(getError(angle, pose.orientation, direction),this->trackWidth);
-    this->direction = turnDirection(sgn(distance.internal()));
+    const Length distance = toLinear<Angle>(getAngularError(angle, pose.orientation, direction),this->trackWidth);
+    //this->direction = turnDirection(sgn(distance.internal()));
     this->targetAngle = angle;
     //currentProfile = this->generateProfile(CubicBezier({0_m,0_m},{0_m,0.33*distance},{0_m,0.66*distance},{0_m,distance}));
     setState(ChassisState::TURN);
@@ -133,12 +117,11 @@ void Chassis::waitUntilDist(Length d){
     }
 }
 
-
 void Chassis::CancelMovement()  
 {
     std::lock_guard<pros::Mutex> lock(mutex);
     setState(ChassisState::IDLE);
-    tank(0_percent,0_percent);
+    //tank(0_percent,0_percent);
 }
 void Chassis::waitUntilSettled()
 {
@@ -158,11 +141,62 @@ units::Pose Chassis::getPose(){
     return pose;
 }
 
-void Chassis::tank(Number left, Number right){
-    if (getState() == ChassisState::IDLE){
-        leftMotors.move(left);
-        rightMotors.move(right);
+/*
+* (swap sign for ccw)
+*
+*  left = throttle + turn
+*  right = throttle - turn
+*  
+*  throttle = (left + right)/2
+*  turn = (left - right)/2
+*
+*/
+std::pair<LinearVelocity, LinearVelocity> Chassis::getVel(){
+    const Time now = from_msec(pros::millis());
+    const Time dt =  now - this->timestamp;
+
+    const Angle leftAngle = leftMotors.getAngle();
+    const Angle rightAngle = rightMotors.getAngle();
+
+    const LinearVelocity leftVel = toLinear<AngularVelocity>((leftAngle-this->leftPrev)/dt,this->wheelDiameter);
+    const LinearVelocity rightVel = toLinear<AngularVelocity>((rightAngle-this->rightPrev)/dt,this->wheelDiameter);
+
+    this->leftPrev = leftAngle;
+    this->rightPrev = rightAngle;
+
+    if (leftAngle != leftPrev || rightAngle != rightPrev || dt > 50_msec) this->timestamp = now;
+
+    return {leftVel, rightVel};
+}   
+
+void Chassis::tank(AngularVelocity maxVel, double scale){
+    const LinearVelocity linearMax = toLinear<AngularVelocity>(maxVel,this->wheelDiameter);
+    const double left = Controller::master[LEFT_Y];
+    const double right = Controller::master[RIGHT_Y];
+    const double leftScaled = driveCurve(left * (fabs(left) > 1/127.0), scale);
+    const double rightScaled = driveCurve(right * (fabs(right) > 1/127.0), scale);
+    const auto vel = getVel();
+    const ChassisSpeeds speeds = {toAngular<LinearVelocity>((rightScaled - leftScaled)/2 * linearMax, this->trackWidth),
+                                    (leftScaled + rightScaled)/2 * linearMax};
+    moveVel(speeds, vel.first, vel.second);
+}
+
+void Chassis::moveVel(ChassisSpeeds speeds,LinearVelocity leftVel, LinearVelocity rightVel){
+    Number throttle = linearController->getPower(speeds.v.convert(mps),(leftVel + rightVel).convert(mps) / 2.0);
+    Number turn = angularController->getPower(speeds.ω.convert(radps),
+                            toAngular<LinearVelocity>(rightVel - leftVel,this->trackWidth).convert(radps) / 2.0);
+
+    move(throttle - turn, throttle + turn);
+}
+
+void Chassis::move(Number left, Number right){
+    Number max = units::max(left, right);
+    if(max > 1_num){
+        left = left/max;
+        right = right/max;
     }
+    leftMotors.move(left);
+    rightMotors.move(right);
 }
 
 //dTheta = (dL-dR)/width
@@ -209,18 +243,40 @@ void Chassis::findDiameter(Length distance){
     }
 }
 
+//yoinked from lemlib
+void Chassis::calibrateIMU(){
+    int attempt = 1;
+    bool calibrated = false;
+    // calibrate inertial, and if calibration fails, then repeat 5 times or until successful
+    auto port = this->imu->getPort();
+    while (attempt <= 5) {
+        pros::c::imu_reset(port);
+        // wait until IMU is calibrated
+        do pros::delay(10);
+        while (pros::c::imu_get_status(port) != (pros::E_IMU_STATUS_ERROR || pros::E_IMU_STATUS_CALIBRATING));
+        // exit if imu has been calibrated
+        auto heading = pros::c::imu_get_heading(port);
+        if (!isnanf(heading) && !isinf(heading)) {
+            calibrated = true;
+            break;
+        }
+        // indicate error
+        pros::c::controller_rumble(pros::E_CONTROLLER_MASTER, "---");
+        //lemlib::infoSink()->warn("IMU failed to calibrate! Attempt #{}", attempt);
+        attempt++;
+    }
+    // check if calibration attempts were successful
+    if (attempt > 5) {
+        this->imu = nullptr;
+        //lemlib::infoSink()->error("IMU calibration failed, defaulting to tracking wheels / motor encoders");
+    }
+}
 void Chassis::init() {
-    if (task == nullptr) {
+    /**if (task == nullptr) {
         imu->calibrate();
         while(imu->isCalibrating()){
             pros::delay(10);
         }
-        /**if(imu->isConnected()){
-            controller::master.set_text(2,0,"calibrated");
-        }
-        else{
-            controller::master.set_text(2,0,"fail");
-        }**/
         odom.setPose({0_m,0_m,0_cDeg});
         task = new pros::Task ([this] {
 
@@ -240,19 +296,15 @@ void Chassis::init() {
                 const std::pair<AngularVelocity,AngularVelocity> currentVelocity = {
                     (currentAngles.first - lastAngles.first) / (10_msec),
                     (currentAngles.second - lastAngles.second) / (10_msec)
-                };
-                //controller::master.set_text(2,0,std::to_string((leftsma.next(currentVelocity.first.convert(rpm) +
-                //                                                rightsma.next(currentVelocity.second.convert(rpm))))*0.5));        
+                };     
                 if (motorSpeeds.first != 0_rpm ) ouputs.push_back(std::to_string(time) + "," + std::to_string(currentVelocity.first.convert(rpm)) + "," + std::to_string(motorSpeeds.first.convert(rpm)));
                 switch (getState()) {
                 
                 case ChassisState::IDLE:
-                    //controller::master.set_text(0,0,"idle         ");
                     motorSpeeds = {0_rpm,0_rpm};
                     break;
                 
                 case ChassisState::FOLLOW: {
-                    //controller::master.set_text(0,0,"following   ");
                     units::Pose currentPose = odom.getPose();
                     if (followReversed) currentPose.orientation = currentPose.orientation + from_stDeg(M_PI);
                     const ProfilePoint point = currentProfile->getProfilePoint(currentPose);
@@ -297,7 +349,7 @@ void Chassis::init() {
                 
                 case ChassisState::TURN:
                     units::Pose currentPose = odom.getPose();
-                    const Angle angularError = getError(this->targetAngle,currentPose.orientation,this->direction);
+                    const Angle angularError = getAngularError(this->targetAngle,currentPose.orientation,this->direction);
                     
                     if (units::abs(angularError) > 350_stDeg || units::abs(angularError) < 0.2_stDeg) {
                         delete currentProfile;
@@ -317,7 +369,7 @@ void Chassis::init() {
                     if(this->direction == CW) velocity = -velocity;
                     AngularVelocity motorVel = toAngular<LinearVelocity>(velocity,wheelDiameter);
                     
-                    motorSpeeds = {-motorVel,motorVel}; //turns counterclockwise
+                    motorSpeeds = {-motorVel,motorVel};
                     if(leftController == nullptr || rightController == nullptr){
                         leftMotors.moveVelocity(motorSpeeds.first);
                         rightMotors.moveVelocity(motorSpeeds.second);
@@ -342,5 +394,5 @@ void Chassis::init() {
                 time += 10;
             }
         },TASK_PRIORITY_MAX-3);
-    }
+    }**/
 }
