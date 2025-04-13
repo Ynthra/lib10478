@@ -7,6 +7,7 @@
 - [wpilib](https://github.com/wpilibsuite/allwpilib) for RAMSETE implementation
 - [this book](https://controls-in-frc.link/) for RAMSETE explanation
 - deepseek for vibecoding the whole path planner 🐐
+- [this](https://github.com/Ryan4253/ryanlib) and [this](https://github.com/joshua-jose/23218A-TippingPoint-Public) codebases for pros multithreading stuff
 
 Pretty sure there's undefined behaviour somewhere btw so don't use this code 💀.
 Also my fault for the inconsistent formatting / naming.
