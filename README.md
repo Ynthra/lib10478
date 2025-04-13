@@ -19,3 +19,4 @@ Check [here](https://github.com/Ynthra/lib10478/tree/183daaee0ecbc13e4baaf4a6dc1
 - [ ] add quintic bezier support with c2 continuity
 - [ ] fix path planner importing standalone bezier curves
 - [ ] find potential UB so I'm not screwed at worlds
+- [ ] support flipping autons properly
