@@ -68,15 +68,6 @@ ChassisSpeeds Chassis::RAMSETE(ChassisSpeeds speeds, units::Pose target, units::
     return ChassisSpeeds {adjustedAngular,adjustedLinear};
 }
 
-std::pair<AngularVelocity, AngularVelocity> Chassis::toMotorSpeeds(ChassisSpeeds speeds)
-{
-	const LinearVelocity velLeft = speeds.v - toLinear<AngularVelocity>(speeds.ω, this->trackWidth);
-	const LinearVelocity velRight = speeds.v + toLinear<AngularVelocity>(speeds.ω, this->trackWidth);
-
-    return std::make_pair(toAngular<LinearVelocity>(velLeft,wheelDiameter),
-                          toAngular<LinearVelocity>(velRight,wheelDiameter));
-}
-
 void Chassis::driveStraight(Length distance,followParams params){
     auto pose = odom.getPose();
     units::Vector2D<Number> direction = units::Vector2D<Number>::fromPolar(pose.orientation, 1);
@@ -103,10 +94,10 @@ int turnLoops;
 void Chassis::turnTo(Angle angle, turnDirection direction){
     std::lock_guard<pros::Mutex> lock(mutex);
     const units::Pose pose = odom.getPose();
-    const Length distance = toLinear<Angle>(getAngularError(angle, pose.orientation, direction),this->trackWidth);
-    //this->direction = turnDirection(sgn(distance.internal()));
+    const Length distance = toLinear<Angle>(getAngularError(angle, pose.orientation, this->direction),this->trackWidth);
+    this->direction = turnDirection(sgn(distance.internal()));
     this->targetAngle = angle;
-    //currentProfile = this->generateProfile(CubicBezier({0_m,0_m},{0_m,0.33*distance},{0_m,0.66*distance},{0_m,distance}));
+    currentProfile = this->angularGenerator->generateProfile(CubicBezier({0_m,0_m},{0_m,0.33*distance},{0_m,0.66*distance},{0_m,distance}));
     setState(ChassisState::TURN);
 }
 
@@ -123,7 +114,7 @@ void Chassis::CancelMovement()
 {
     std::lock_guard<pros::Mutex> lock(mutex);
     setState(ChassisState::IDLE);
-    //tank(0_percent,0_percent);
+    move(0_percent,0_percent);
 }
 void Chassis::waitUntilSettled()
 {
@@ -134,12 +125,12 @@ void Chassis::waitUntilSettled()
 }
 void Chassis::setPose(units::Pose pose){
     std::lock_guard<pros::Mutex> lock(mutex);
-    odom.setPose(pose);
+    this->odom.setPose(pose);
 }
 
 units::Pose Chassis::getPose(){
     std::lock_guard<pros::Mutex> lock(mutex);
-    auto pose = odom.getPose();
+    auto pose = this->odom.getPose();
     return pose;
 }
 
@@ -153,7 +144,7 @@ units::Pose Chassis::getPose(){
 *  turn = (left - right)/2
 *
 */
-std::pair<LinearVelocity, LinearVelocity> Chassis::getVel(){
+void Chassis::updateVel(){
     const Time now = from_msec(pros::millis());
     const Time dt =  now - this->timestamp;
 
@@ -168,7 +159,7 @@ std::pair<LinearVelocity, LinearVelocity> Chassis::getVel(){
 
     if (leftAngle != leftPrev || rightAngle != rightPrev || dt > 50_msec) this->timestamp = now;
 
-    return {leftVel, rightVel};
+    currentVel = {leftVel, rightVel};
 }   
 
 void Chassis::tank(AngularVelocity maxVel, double scale){
@@ -177,10 +168,9 @@ void Chassis::tank(AngularVelocity maxVel, double scale){
     const double right = Controller::master[RIGHT_Y];
     const double leftScaled = driveCurve(left * (fabs(left) > 1/127.0), scale);
     const double rightScaled = driveCurve(right * (fabs(right) > 1/127.0), scale);
-    const auto vel = getVel();
     const ChassisSpeeds speeds = {toAngular<LinearVelocity>((rightScaled - leftScaled)/2 * linearMax, this->trackWidth),
                                     (leftScaled + rightScaled)/2 * linearMax};
-    moveVel(speeds, vel);
+    moveVel(speeds, this->currentVel);
 }
 
 void Chassis::moveVel(ChassisSpeeds speeds,std::pair<LinearVelocity, LinearVelocity> currentVel){
@@ -203,45 +193,90 @@ void Chassis::move(Number left, Number right){
 
 //dTheta = (dL-dR)/width
 //width = (dL-dR)/dTheta
-void Chassis::findWidth(Angle rotations){
+void Chassis::findWidth(){
     this->leftMotors.setAngle(0_stDeg);
     this->rightMotors.setAngle(0_stDeg);
 
+    setPose({0_m,0_m,0_stDeg});
+    
     while (true) {
-        /**controller::update();
-        if(controller::Right.pressing){
-            this->leftMotors.move(50_percent);
-            this->rightMotors.move(-50_percent);
+        Controller::updateAll();
+        const auto pose = getPose();
+        if(Controller::master[RIGHT].pressing){
+            move(0.4, -0.4);
         }
-        else if(controller::Left.pressing){
-            this->leftMotors.move(-50_percent);
-            this->rightMotors.move(50_percent);
+        else if(Controller::master[LEFT].pressing){
+            move(-0.4, 0.4);
         }
         else {
-            this->leftMotors.move(0_percent);
-            this->rightMotors.move(0_percent);
+            move(0,0);
         }
-        controller::master.set_text(2,0,std::to_string(
-            ((toLinear<Angle>(this->leftMotors.getAngle(),this->wheelDiameter) - 
-            toLinear<Angle>(this->rightMotors.getAngle(),this->wheelDiameter))/
-            rotations.internal()).convert(in)));
-        if(controller::A.pressed) break;
-        pros::delay(50);**/
+        pros::c::controller_set_text(pros::E_CONTROLLER_MASTER, 2,0,
+            std::to_string(
+                ((toLinear<Angle>(this->leftMotors.getAngle(),this->wheelDiameter) - 
+                toLinear<Angle>(this->rightMotors.getAngle(),this->wheelDiameter))/
+                pose.orientation.internal()).convert(in)).c_str());
+
+        if(Controller::master[A].pressed) break;
+        pros::delay(50);
     }
 }
 
 // s = rTheta
 // 2s/Theta = diameter
-
+// 2s/ ((thetaL + thetaR)/2) = diameter
+// 4s/(thetaL + thetaR) = diameter
 void Chassis::findDiameter(Length distance){
     this->leftMotors.setAngle(0_stDeg);
     this->rightMotors.setAngle(0_stDeg);
+
+    setPose({0_m,0_m,0_stDeg});
+    
     while (true) {
-        /**controller::update();
-        controller::master.set_text(2,0,std::to_string(2*distance.convert(in)/
-        ((this->leftMotors.getAngle().internal() + this->rightMotors.getAngle().internal())/2)));
-        if(controller::A.pressed) break;
-        pros::delay(50);**/
+        Controller::updateAll();
+        const auto pose = getPose();
+        if(Controller::master[RIGHT].pressing){
+            move(0.4, -0.4);
+        }
+        else if(Controller::master[LEFT].pressing){
+            move(-0.4, 0.4);
+        }
+        else {
+            move(0,0);
+        }
+
+        
+        pros::c::controller_set_text(pros::E_CONTROLLER_MASTER, 2,0,
+            std::to_string(
+                ((4*distance.internal())/
+                    (toLinear<Angle>(this->leftMotors.getAngle(),this->wheelDiameter) + 
+                toLinear<Angle>(this->rightMotors.getAngle(),this->wheelDiameter)).internal())).c_str());
+
+        if(Controller::master[A].pressed) break;
+        pros::delay(50);
+    }
+}
+void Chassis::findIMUScalar(Angle rotations){
+    this->leftMotors.setAngle(0_stDeg);
+    this->rightMotors.setAngle(0_stDeg);
+
+    setPose({0_m,0_m,0_cDeg});
+    while (true) {
+        Controller::updateAll();
+        const auto pose = getPose();
+        if(Controller::master[RIGHT].pressing){
+            move(0.4, -0.4);
+        }
+        else if(Controller::master[LEFT].pressing){
+            move(-0.4, 0.4);
+        }
+        else {
+            move(0,0);
+        }
+
+        
+        pros::c::controller_set_text(pros::E_CONTROLLER_MASTER, 2,0,
+            std::to_string(double(to_stDeg(rotations)/to_cDeg(pose.orientation)) * this->imu->getGyroScalar().internal()).c_str());
     }
 }
 
@@ -283,16 +318,39 @@ void Chassis::init() {
             while(pros::c::competition_is_disabled()) pros::Task::delay_until(&now, 5);
             while(true) {
                 this->mutex.take();
+
                 this->odom.update();
-                
+                this->updateVel();
+
                 switch (getState()) {
-                    case ChassisState::IDLE:
-                        getVel();
+                    case ChassisState::IDLE: {
                         break;
-                    case ChassisState::TURN:
-                        getVel();
+                    }
+                    case ChassisState::TURN: {
+                        units::Pose currentPose = this->odom.getPose();
+                        const Angle angularError = getAngularError(this->targetAngle,currentPose.orientation,this->direction);
+                        
+                        //if passed target or at target, exit
+                        if (units::abs(angularError) > 350_stDeg || units::abs(angularError) < 0.2_stDeg) {
+                            delete currentProfile;
+                            setState(ChassisState::IDLE);
+                            move(0_percent,0_percent);
+                            this->direction = AUTO;
+                            break;
+                        }
+                        
+                        if (this->currentProfile == nullptr) break;
+                        const Length d = this->currentProfile->getLength() - this->direction*toLinear<Angle>(
+                                    angularError, this->trackWidth);
+                        
+                        AngularVelocity omega = this->direction*toAngular<LinearVelocity>(
+                                                        this->currentProfile->getProfilePoint(d).velocity
+                                                       ,this->trackWidth);
+                        
+                        moveVel({omega,0_mps}, currentVel);
                         break;
-                    case ChassisState::FOLLOW:
+                    }
+                    case ChassisState::FOLLOW: {
                         units::Pose currentPose = this->odom.getPose();
                         if(this->followReversed) currentPose.orientation = currentPose.orientation + 0.5_stRot;
                         const auto point = this->currentProfile->getProfilePoint(currentPose);
@@ -313,11 +371,11 @@ void Chassis::init() {
                         if (this->followReversed) speeds.v = -speeds.v;
 
                         if(this->useRAMSETE) speeds = RAMSETE(speeds, point.first.pose, currentPose);
-                        auto currentVel = getVel();
-
-                        moveVel(speeds, currentVel);
+                        
+                        moveVel(speeds, this->currentVel);
 
                         break;
+                    }
                 }
 
                 this->mutex.give();
@@ -325,129 +383,6 @@ void Chassis::init() {
             }
             
 
-        },TASK_PRIORITY_MAX-4);
-    }
-    /**if (task == nullptr) {
-        imu->calibrate();
-        while(imu->isCalibrating()){
-            pros::delay(10);
-        }
-        odom.setPose({0_m,0_m,0_cDeg});
-        task = new pros::Task ([this] {
-
-            std::uint32_t now = pros::millis();
-
-            std::pair<Angle,Angle> lastAngles = {leftMotors.getAngle(),rightMotors.getAngle()};
-
-            SimpleMovingAverage leftsma(2);
-            SimpleMovingAverage rightsma(2);
-            int loops = 0;
-            std::pair<AngularVelocity, AngularVelocity> motorSpeeds = {0_rpm,0_rpm};
-            int time = 0;
-            while (true) {
-                mutex.take();
-                odom.update();
-                const std::pair<Angle,Angle> currentAngles = {leftMotors.getAngle(),rightMotors.getAngle()};
-                const std::pair<AngularVelocity,AngularVelocity> currentVelocity = {
-                    (currentAngles.first - lastAngles.first) / (10_msec),
-                    (currentAngles.second - lastAngles.second) / (10_msec)
-                };     
-                if (motorSpeeds.first != 0_rpm ) ouputs.push_back(std::to_string(time) + "," + std::to_string(currentVelocity.first.convert(rpm)) + "," + std::to_string(motorSpeeds.first.convert(rpm)));
-                switch (getState()) {
-                
-                case ChassisState::IDLE:
-                    motorSpeeds = {0_rpm,0_rpm};
-                    break;
-                
-                case ChassisState::FOLLOW: {
-                    units::Pose currentPose = odom.getPose();
-                    if (followReversed) currentPose.orientation = currentPose.orientation + from_stDeg(M_PI);
-                    const ProfilePoint point = currentProfile->getProfilePoint(currentPose);
-                    distTarget = currentProfile->getLength()-point.dist;
-
-                    if (point == currentProfile->profile.back()) {
-                        setState(ChassisState::IDLE);
-                        tank(0_percent,0_percent);
-                        break;
-                    }
-                    
-                    ChassisSpeeds speeds = {
-                        from_radps(point.velocity.internal() * point.curvature.internal()),
-                        point.velocity
-                    };
-                    
-                    if(followReversed) speeds.v = -speeds.v;
-
-                    if (useRAMSETE) {
-                        speeds = RAMSETE(speeds, point.pose, odom.getPose());
-                    }
-
-                    motorSpeeds = toMotorSpeeds(speeds);
-
-                    if(leftController == nullptr || rightController == nullptr){
-                        leftMotors.moveVelocity(motorSpeeds.first);
-                        rightMotors.moveVelocity(motorSpeeds.second);
-                    }
-                    else{
-                        Number leftPower = leftController->getPower(motorSpeeds.first,currentVelocity.first);
-                        Number rightPower = rightController->getPower(motorSpeeds.second,currentVelocity.second);
-                        const Number maxPower = std::max(leftPower,rightPower);
-                        if(maxPower > 1_num){
-                            leftPower = leftPower/maxPower;
-                            rightPower = rightPower/maxPower;
-                        }
-                        leftMotors.move(leftPower);
-                        rightMotors.move(rightPower);
-                    }
-                    break;
-                }
-                
-                case ChassisState::TURN:
-                    units::Pose currentPose = odom.getPose();
-                    const Angle angularError = getAngularError(this->targetAngle,currentPose.orientation,this->direction);
-                    
-                    if (units::abs(angularError) > 350_stDeg || units::abs(angularError) < 0.2_stDeg) {
-                        delete currentProfile;
-                        setState(ChassisState::IDLE);
-                        tank(0_percent,0_percent);
-                        this->direction = AUTO;
-                        break;
-                    }
-
-                    const Length d = currentProfile->getLength() - this->direction*toLinear<Angle>(
-                                angularError, this->trackWidth);
-                    
-                    if (currentProfile == nullptr) break;
-                    LinearVelocity velocity = currentProfile->getProfilePoint(d).velocity;
-
-
-                    if(this->direction == CW) velocity = -velocity;
-                    AngularVelocity motorVel = toAngular<LinearVelocity>(velocity,wheelDiameter);
-                    
-                    motorSpeeds = {-motorVel,motorVel};
-                    if(leftController == nullptr || rightController == nullptr){
-                        leftMotors.moveVelocity(motorSpeeds.first);
-                        rightMotors.moveVelocity(motorSpeeds.second);
-                    }
-                    else{
-                        Number leftPower = leftController->getPower(motorSpeeds.first,currentVelocity.first);
-                        Number rightPower = rightController->getPower(motorSpeeds.second,currentVelocity.second);
-                        const Number maxPower = std::max(leftPower,rightPower);
-                        if(maxPower > 1_num){
-                            leftPower = leftPower/maxPower;
-                            rightPower = rightPower/maxPower;
-                        }
-                        leftMotors.move(leftPower);
-                        rightMotors.move(rightPower);
-                    }
-                    break;
-                }
-
-                lastAngles = currentAngles;
-                mutex.give();
-                pros::Task::delay_until(&now, 10);
-                time += 10;
-            }
         },TASK_PRIORITY_MAX-3);
-    }**/
+    }
 }

@@ -52,13 +52,6 @@ struct ProfilePoint{
     LinearVelocity velocity;
     Curvature curvature;
     Length dist;
-
-    bool operator==(ProfilePoint other) const {
-        return pose.x == other.pose.x && pose.y == other.pose.y 
-            && pose.orientation == other.pose.orientation
-            && velocity == other.velocity
-            && curvature == other.curvature;
-    }
 };
 
 class Profile
@@ -74,7 +67,5 @@ public:
 
     int prev = 0;
 };
-
-
 
 }//namespace lib10478

@@ -1,30 +1,20 @@
 #pragma once
 #include "hardware/IMU/V5InertialSensor.hpp"
 #include "lib10478/Odom.hpp"
+#include "lib10478/ProfileGenerator.hpp"
 #include "pros/rtos.hpp"
 #include "units/Pose.hpp"
 #include "units/units.hpp"
 #include "units/Angle.hpp"
 #include "hardware/Motor/MotorGroup.hpp"
 #include <atomic>
-#include <concepts>
-#include <optional>
 #include <utility>
-#include "bezier.hpp"
 #include "Profile.hpp"
 #include "StateMachine.hpp"
 #include "VelocityController.hpp"
 #include "Math.hpp"
 namespace lib10478
 {
-
-struct Constraints
-{
-    VelocityLimits velLimits;
-    LinearAcceleration maxAccel;
-    LinearAcceleration maxDecel;
-    Number frictionCoefficent;
-};
 
 struct ChassisSpeeds{
     AngularVelocity ω;
@@ -61,7 +51,6 @@ public:
     lemlib::MotorGroup leftMotors;
     lemlib::MotorGroup rightMotors;
 
-    Profile* generateProfile(const virtualPath& path, Length dd = 0.2_cm, std::optional<Constraints> constraints = std::nullopt);
     void followProfile(Profile *profile, followParams params = {});
     void driveStraight(Length distance,followParams params = {});
     void turnTo(Angle angle, turnDirection direction = AUTO);
@@ -74,17 +63,22 @@ public:
 
     void tank(AngularVelocity maxVel, double scale = 1.5);
     void moveVel(ChassisSpeeds speeds, std::pair<LinearVelocity, LinearVelocity> currentVel);
-
-    std::pair<LinearVelocity, LinearVelocity> getVel();
     
     void move(Number left, Number right);
 
-    void findWidth(Angle rotations);
+    void findWidth();
+    void findIMUScalar(Angle rotations);
     void findDiameter(Length distance);
+
+    ProfileGenerator* angularGenerator = nullptr;
 
     TrackingWheel rightTracker;
     TrackingWheel leftTracker;
 private:
+
+    void updateVel();
+    std::pair<LinearVelocity, LinearVelocity> currentVel = {0_mps, 0_mps};
+
     bool swappedSides;
     Length distTarget = 0_m;
     Odom odom;
