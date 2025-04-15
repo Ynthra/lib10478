@@ -73,7 +73,7 @@ public:
     units::Pose getPose();
 
     void tank(AngularVelocity maxVel, double scale = 1.5);
-    void moveVel(ChassisSpeeds speeds, LinearVelocity leftVel, LinearVelocity rightVel);
+    void moveVel(ChassisSpeeds speeds, std::pair<LinearVelocity, LinearVelocity> currentVel);
 
     std::pair<LinearVelocity, LinearVelocity> getVel();
     

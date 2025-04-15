@@ -4,6 +4,7 @@
 #include "units/units.hpp"
 #include "lib10478/controller.hpp"
 #include <string>
+#include <utility>
 
 using namespace lib10478;
 
@@ -23,7 +24,7 @@ ProfilePoint Profile::getProfilePoint(Length d)
 }
 
 //finds the nearest point to the given position
-ProfilePoint Profile::getProfilePoint(units::V2Position pos){
+std::pair<ProfilePoint, int> Profile::getProfilePoint(units::V2Position pos){
     int range = int(to_num(0.5_in /this->dd)); //only checks points within 0.5 inches of the previous point
     Length minDist = 100_tile;
     int index;
@@ -39,7 +40,7 @@ ProfilePoint Profile::getProfilePoint(units::V2Position pos){
     }
     //controller::master.set_text(0,0,std::to_string(minDist.convert(in)));
     prev = index;
-    return profile[index];
+    return {profile[index],index};
 }
 
 Length Profile::getLength(){

@@ -6,6 +6,7 @@
 #include "lib10478/Odom.hpp"
 #include "hardware/Motor/MotorGroup.hpp"
 #include "pros/imu.h"
+#include "pros/misc.h"
 #include "pros/rtos.h"
 #include "pros/rtos.hpp"
 #include "units/Angle.hpp"
@@ -58,9 +59,9 @@ ChassisSpeeds Chassis::RAMSETE(ChassisSpeeds speeds, units::Pose target, units::
     // ω_cmd = ω + k e_θ + b v sinc(e_θ) e_y
     const LinearVelocity adjustedLinear = from_mps(speeds.v.internal() * std::cos(localError.orientation.internal())
                                                     + k * localError.x.internal());
-    const AngularVelocity adjustedAngular = from_radps(speeds.ω.internal() 
+    const AngularVelocity adjustedAngular = from_radps(speeds.ω.internal()
                                                     + k * localError.orientation.internal()
-                                                    + beta * speeds.v.internal() 
+                                                    + beta * speeds.v.internal()
                                                     * sinc(localError.orientation.internal())
                                                     * localError.y.internal());
     
@@ -113,7 +114,7 @@ void Chassis::waitUntilDist(Length d){
     auto now = pros::millis();
     while(true){
         std::lock_guard<pros::Mutex> lock(mutex);
-        if(distTarget < d) break;
+        if(this->distTarget < d) break;
         pros::Task::delay_until(&now, 10);
     }
 }
@@ -179,13 +180,13 @@ void Chassis::tank(AngularVelocity maxVel, double scale){
     const auto vel = getVel();
     const ChassisSpeeds speeds = {toAngular<LinearVelocity>((rightScaled - leftScaled)/2 * linearMax, this->trackWidth),
                                     (leftScaled + rightScaled)/2 * linearMax};
-    moveVel(speeds, vel.first, vel.second);
+    moveVel(speeds, vel);
 }
 
-void Chassis::moveVel(ChassisSpeeds speeds,LinearVelocity leftVel, LinearVelocity rightVel){
-    Number throttle = linearController->getPower(speeds.v.convert(mps),(leftVel + rightVel).convert(mps) / 2.0);
+void Chassis::moveVel(ChassisSpeeds speeds,std::pair<LinearVelocity, LinearVelocity> currentVel){
+    Number throttle = linearController->getPower(speeds.v.convert(mps),(currentVel.first + currentVel.second).convert(mps) / 2.0);
     Number turn = angularController->getPower(speeds.ω.convert(radps),
-                            toAngular<LinearVelocity>(rightVel - leftVel,this->trackWidth).convert(radps) / 2.0);
+                            toAngular<LinearVelocity>(currentVel.first - currentVel.second,this->trackWidth).convert(radps) / 2.0);
 
     move(throttle - turn, throttle + turn);
 }
@@ -279,16 +280,43 @@ void Chassis::init() {
         this->task = new pros::Task([this] {
             std::uint32_t now = pros::millis();
             
+            while(pros::c::competition_is_disabled()) pros::Task::delay_until(&now, 5);
             while(true) {
                 this->mutex.take();
                 this->odom.update();
                 
                 switch (getState()) {
                     case ChassisState::IDLE:
+                        getVel();
                         break;
                     case ChassisState::TURN:
+                        getVel();
                         break;
                     case ChassisState::FOLLOW:
+                        units::Pose currentPose = this->odom.getPose();
+                        if(this->followReversed) currentPose.orientation = currentPose.orientation + 0.5_stRot;
+                        const auto point = this->currentProfile->getProfilePoint(currentPose);
+
+                        this->distTarget = currentProfile->getLength()-point.first.dist;
+
+                        if(point.second >= this->currentProfile->profile.size()-1){
+                            setState(ChassisState::IDLE);
+                            move(0,0);
+                            break;
+                        }
+
+                        ChassisSpeeds speeds = {
+                            from_radps(point.first.velocity.internal() * point.first.curvature.internal()),
+                            point.first.velocity
+                        };
+
+                        if (this->followReversed) speeds.v = -speeds.v;
+
+                        if(this->useRAMSETE) speeds = RAMSETE(speeds, point.first.pose, currentPose);
+                        auto currentVel = getVel();
+
+                        moveVel(speeds, currentVel);
+
                         break;
                 }
 
@@ -297,7 +325,7 @@ void Chassis::init() {
             }
             
 
-        },TASK_PRIORITY_DEFAULT+2);
+        },TASK_PRIORITY_MAX-4);
     }
     /**if (task == nullptr) {
         imu->calibrate();

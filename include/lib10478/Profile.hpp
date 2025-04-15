@@ -4,6 +4,7 @@
 #include "units/units.hpp"
 #include "units/Angle.hpp"
 #include "units/Pose.hpp"
+#include <utility>
 #include <vector>
 
 
@@ -65,7 +66,7 @@ class Profile
 public:
     Profile(std::vector<ProfilePoint>& profile, Length dd);
     ProfilePoint getProfilePoint(Length d);
-    ProfilePoint getProfilePoint(units::V2Position pos);
+    std::pair<ProfilePoint,int> getProfilePoint(units::V2Position pos);
     Length getLength();
     
     const Length dd;

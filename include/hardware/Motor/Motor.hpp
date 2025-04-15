@@ -504,6 +504,8 @@ class Motor : public Encoder {
          * @endcode
          */
         AngularVelocity getOutputVelocity() const;
+
+        AngularVelocity getActualVelocity() const;
     private:
         mutable pros::Mutex m_mutex;
         AngularVelocity m_outputVelocity;
