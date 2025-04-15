@@ -15,7 +15,7 @@ Check [here](https://github.com/Ynthra/lib10478/tree/183daaee0ecbc13e4baaf4a6dc1
 - [this](https://github.com/Ryan4253/ryanlib) and [this](https://github.com/joshua-jose/23218A-TippingPoint-Public) codebases for pros multithreading stuff
 
 # TODO
-- [ ] finish main chassis task
+- [x] finish main chassis task
 - [ ] add quintic bezier support with c2 continuity
 - [ ] fix path planner importing standalone bezier curves
 - [ ] find potential UB so I'm not screwed at worlds
