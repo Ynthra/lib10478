@@ -46,6 +46,7 @@ public:
             Length trackWidth,
             Length wheelDiameter, 
             VelocityController* linearController, VelocityController* angularController,
+            ProfileGenerator* angularGenerator,
             TrackingWheel* backTracker);
     
     lemlib::MotorGroup leftMotors;

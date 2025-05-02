@@ -25,7 +25,7 @@ ProfilePoint Profile::getProfilePoint(Length d)
 
 //finds the nearest point to the given position
 std::pair<ProfilePoint, int> Profile::getProfilePoint(units::V2Position pos){
-    int range = int(to_num(0.3_in /this->dd)); //only checks points within 0.3 inches of the previous point
+    int range = int(to_num(1.2_in /this->dd)); //only checks points within 1.2 inches of the previous point
     Length minDist = 100_tile;
     int index;
     for(int i = prev - range; i < prev + range; i++){

@@ -17,6 +17,7 @@
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
+#include <iostream>
 #include <math.h>
 #include <mutex>
 #include <utility>
@@ -33,6 +34,7 @@ Chassis::Chassis(std::initializer_list<lemlib::ReversibleSmartPort> leftPorts,
                  Length trackWidth,
                  Length wheelDiameter, 
                  VelocityController* linearController, VelocityController* angularController,
+                 ProfileGenerator* angularGenerator,
                  TrackingWheel* backTracker)
     : leftMotors(leftPorts,outputVelocity), rightMotors(rightPorts,outputVelocity), 
       swappedSides(swappedSides),
@@ -42,7 +44,8 @@ Chassis::Chassis(std::initializer_list<lemlib::ReversibleSmartPort> leftPorts,
       rightTracker(&rightMotors,wheelDiameter,trackWidth/2),
       imu(imu),
       odom(imu, &leftTracker, &rightTracker, backTracker), 
-      linearController(linearController),angularController(angularController) {}
+      linearController(linearController),angularController(angularController),
+      angularGenerator(angularGenerator) {}
 
 ChassisSpeeds Chassis::RAMSETE(ChassisSpeeds speeds, units::Pose target, units::Pose current)
 {
@@ -154,10 +157,11 @@ void Chassis::updateVel(){
     const LinearVelocity leftVel = toLinear<AngularVelocity>((leftAngle-this->leftPrev)/dt,this->wheelDiameter);
     const LinearVelocity rightVel = toLinear<AngularVelocity>((rightAngle-this->rightPrev)/dt,this->wheelDiameter);
 
-    this->leftPrev = leftAngle;
-    this->rightPrev = rightAngle;
 
     if (leftAngle != leftPrev || rightAngle != rightPrev || dt > 50_msec) this->timestamp = now;
+
+    this->leftPrev = leftAngle;
+    this->rightPrev = rightAngle;
 
     currentVel = {leftVel, rightVel};
 }   
@@ -277,6 +281,7 @@ void Chassis::findIMUScalar(Angle rotations){
         
         pros::c::controller_set_text(pros::E_CONTROLLER_MASTER, 2,0,
             std::to_string(double(to_stDeg(rotations)/to_cDeg(pose.orientation)) * this->imu->getGyroScalar().internal()).c_str());
+        pros::delay(10);
     }
 }
 
@@ -289,9 +294,11 @@ void Chassis::calibrateIMU(){
     while (attempt <= 5) {
         pros::c::imu_reset(port);
         // wait until IMU is calibrated
-        do pros::delay(10);
-        while (pros::c::imu_get_status(port) != (pros::E_IMU_STATUS_ERROR || pros::E_IMU_STATUS_CALIBRATING));
-        // exit if imu has been calibrated
+        do {
+            pros::delay(10);
+        }
+        while (pros::c::imu_get_status(port) & pros::E_IMU_STATUS_CALIBRATING);
+
         auto heading = pros::c::imu_get_heading(port);
         if (!isnanf(heading) && !isinf(heading)) {
             calibrated = true;
@@ -299,13 +306,13 @@ void Chassis::calibrateIMU(){
         }
         // indicate error
         pros::c::controller_rumble(pros::E_CONTROLLER_MASTER, "---");
-        //lemlib::infoSink()->warn("IMU failed to calibrate! Attempt #{}", attempt);
+        std::cout << "failed to calibrate attempt number " << attempt << "\n";
         attempt++;
     }
     // check if calibration attempts were successful
     if (attempt > 5) {
         this->imu = nullptr;
-        //lemlib::infoSink()->error("IMU calibration failed, defaulting to tracking wheels / motor encoders");
+        std::cout << "failed to calibrate\n";
     }
 }
 void Chassis::init() {
@@ -316,12 +323,16 @@ void Chassis::init() {
             std::uint32_t now = pros::millis();
             
             while(pros::c::competition_is_disabled()) pros::Task::delay_until(&now, 5);
+            SimpleMovingAverage lSMA(2);
+            SimpleMovingAverage rSMA(2);
+            auto start = pros::millis();
             while(true) {
                 this->mutex.take();
 
                 this->odom.update();
                 this->updateVel();
-
+                LinearVelocity target = 0_mps;
+                
                 switch (getState()) {
                     case ChassisState::IDLE: {
                         break;
@@ -371,15 +382,20 @@ void Chassis::init() {
                         if (this->followReversed) speeds.v = -speeds.v;
 
                         if(this->useRAMSETE) speeds = RAMSETE(speeds, point.first.pose, currentPose);
-                        
                         moveVel(speeds, this->currentVel);
-
+                        target = speeds.v;
                         break;
                     }
                 }
 
                 this->mutex.give();
                 pros::Task::delay_until(&now, 10);
+
+                //std::cout <<pros::millis()-start<< "," <<this->currentVel.first.convert(mps)*0.5 + this->currentVel.second.convert(mps)*0.5 
+                //        <<","<< target.convert(mps) <<"," <<odom.getPose().y.convert(tile)<< "\n";
+                std::cout <<pros::millis()-start<< "," <<
+                    toAngular<LinearVelocity>(this->currentVel.first*0.5 - this->currentVel.second*0.5,this->trackWidth).convert(radps) 
+                <<"," <<"\n";
             }
             
 
