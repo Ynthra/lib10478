@@ -1,8 +1,13 @@
 #include "globals.hpp"
 #include "Hardware/Encoder/V5RotationSensor.hpp"
+#include "lemlib/chassis/chassis.hpp"
+#include "lemlib/chassis/trackingWheel.hpp"
 #include "lib10478/PID.hpp"
 #include "lib10478/ProfileGenerator.hpp"
 #include "lib10478/VelocityController.hpp"
+#include "pros/imu.hpp"
+#include "pros/motor_group.hpp"
+#include "pros/rotation.hpp"
 #include "units/Angle.hpp"
 #include "units/units.hpp"
 
@@ -48,15 +53,15 @@ lib10478::PID armPID(0.05, 0, 0.2, 0, false);
 
 /*
 
-
-0.5, 
-
-
+0.25, 1.94459
+0.5, 5.537
+0.75, 9.01355
+1.0, 12.251
 */
 lib10478::VelocityController linearController(0.458026, 0.14 , 0.06, 0.0280905, 0.8);
-lib10478::VelocityController angularController(0, 0 , 0, 0);
+lib10478::VelocityController angularController(0.072533358, 0.02 , 0.008, 0.126115, 0.12);
 
-lib10478::Chassis chassis(
+/**lib10478::Chassis chassis(
     {-17,-16,15}, {-18,19,20}, //drive ports
     false,
     &imu,
@@ -66,6 +71,35 @@ lib10478::Chassis chassis(
     &linearController,&angularController,
     &generator,
     &backTracker
-);
+);**/
+pros::MotorGroup leftgroup({-17,-16,15});
+pros::MotorGroup rightgroup({-18,19,20});
+lemlib::ControllerSettings linearSettings(
+    14, //kP
+    0, //ki
+    35, //kd
+    0, //windup range
+    1, //small error range
+    100, //small error timeout
+    3, //large error range
+    500, //large error timeout
+    0);
+lemlib::ControllerSettings angularSettings(
+    4, //kP
+    0, //ki
+    35, //kd
+    0, //windup range
+    1, //small error range
+    100, //small error timeout
+    5, //large error range
+    500, //large error timeout
+    0);
+lemlib::Drivetrain dt(&leftgroup,&rightgroup,12.3,3.262915,450,8);
+pros::Rotation rotation(14);
+pros::Imu imua(13);
+lemlib::TrackingWheel wheel(&rotation,2.03058,0);
+lemlib::Chassis chassis{
+    dt,linearSettings,angularSettings,{nullptr,nullptr,&wheel,nullptr,&imua}
+};
 
-const Colour teamColour = RED;
+const Colour teamColour = BLUE;

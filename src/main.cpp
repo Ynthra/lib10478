@@ -1,10 +1,12 @@
 #include "main.h"
+#include "autons.hpp"
 #include "globals.hpp"
 #include "hardware/IMU/IMU.hpp"
 #include "hardware/IMU/V5InertialSensor.hpp"
 #include "hardware/Motor/Motor.hpp"
 #include "intake.hpp"
 #include "lib10478/Chassis.hpp"
+#include "lib10478/Math.hpp"
 #include "lib10478/bezier.hpp"
 #include "lib10478/controller.hpp"
 #include "pros/device.hpp"
@@ -12,7 +14,9 @@
 #include "pros/misc.h"
 #include "pros/motors.h"
 #include "pros/rtos.hpp"
+#include "pros/screen.hpp"
 #include "units/Angle.hpp"
+#include "units/Vector2D.hpp"
 #include "units/units.hpp"
 #include <cmath>
 #include <cstdint>
@@ -24,48 +28,41 @@ void initialize() {
 	colorSensor.set_integration_time(20);
 	pros::delay(100);
 	colorSensor.set_led_pwm(100);
-	chassis.init();
 	pros::c::motor_set_encoder_units(11, pros::E_MOTOR_ENCODER_DEGREES);
 	pros::c::motor_set_gearing(11, pros::E_MOTOR_GEAR_BLUE);
-
-	chassis.setPose({0_m,0_m,0_cDeg});
+	chassis.calibrate();
+	pros::delay(100);
 	pros::Task screenTask([&]() {
-		SimpleMovingAverage intakePowSMA(20);
-		{
-			//const units::Pose pose = chassis.getPose();
-			//std::cout <<pose.x.convert(in) << "," << pose.y.convert(in) << "\n";
-		}
-		units::Pose pose = chassis.getPose();
-		while (true) {
-			auto prevPose = pose;
-			pose = chassis.getPose();
-			pros::screen::print(pros::E_TEXT_MEDIUM,0,("x: " + std::to_string(pose.x.convert(in))).c_str());
-			pros::screen::print(pros::E_TEXT_MEDIUM,1,("y: " + std::to_string(pose.y.convert(in))).c_str());
-			pros::screen::print(pros::E_TEXT_MEDIUM,2,("angle: " + std::to_string(to_cDeg(pose.orientation))).c_str());
-			
-			/**if(pros::competition::is_autonomous() && (pose.x != prevPose.x) && (pose.y != prevPose.y)){
-				ouputs.push_back(
-				std::to_string(pose.x.convert(in)) + "," +
-				std::to_string(pose.y.convert(in))
-				);
-			}**/
-			//std::cout <<pose.x.convert(in) << "," << pose.y.convert(in) << "\n";
-			//std::cout <<"(" <<pose.x.convert(in) << "," << pose.y.convert(in) << "),";
-	
-			//pros::screen::print(pros::E_TEXT_MEDIUM,5,("back dist: " + std::to_string(horizontalWheel.getDistance().convert(in))).c_str());
-			/**pros::screen::print(pros::E_TEXT_MEDIUM,1,("left dist: " + std::to_string(chassis.leftTracker.getDistance().convert(in))).c_str());
-			pros::screen::print(pros::E_TEXT_MEDIUM,2,("right dist: " + std::to_string(chassis.rightTracker.getDistance().convert(in))).c_str());
-			**/
-			pros::delay(50);
-		}
-		});
+        while (true) {
+            // print robot location to the brain screen
+
+            pros::screen::print(pros::E_TEXT_MEDIUM,0, "X: %f", chassis.getPose().x); // x
+            pros::screen::print(pros::E_TEXT_MEDIUM,1, "Y: %f", chassis.getPose().y); // y
+            pros::screen::print(pros::E_TEXT_MEDIUM,2, "Theta: %f", chassis.getPose().theta); // heading
+            pros::delay(50);
+        }
+    });
 }
 
 void disabled() {}
 
 void competition_initialize() {}
 
-void autonomous() {}
+void autonomous() {
+	//sevenRingsafe();
+	chassis.moveToPoint(0,24,2000);
+	chassis.waitUntilDone();
+	chassis.moveToPoint(0,48,2000);
+	chassis.waitUntilDone();
+	chassis.moveToPoint(0,36,2000,{.forwards=false});
+	chassis.waitUntilDone();
+	chassis.moveToPoint(0,24,2000,{.forwards=false});
+	chassis.waitUntilDone();
+	chassis.moveToPoint(0,16,2000,{.forwards=false});
+	chassis.waitUntilDone();
+	chassis.moveToPoint(0,8,2000,{.forwards=false});
+	chassis.waitUntilDone();
+}
 
 double offset = 0.5;
 int loops = 0;
@@ -120,23 +117,6 @@ bool exitCorner = false;
 uint32_t timer = pros::millis();
 void opcontrol()
 {
-	//auto path = lib10478::CubicBezier({0_tile,0_tile},{0_tile,0.25_tile},{0_tile,0.5_tile},{0_tile,3_tile});
-	//auto profile = generator.generateProfile(path);
-	//pros::delay(10);
-	//for (auto& point: profile->profile){
-	//	std::cout << point.pose.y.convert(tile) << "," << point.velocity.convert(mps)  << "\n";
-	//	pros::delay(1);
-	//}
-	//chassis.followProfile(profile,{.useRAMSETE=false,.followReversed=false});
-	
-	//chassis.waitUntilSettled();
-	chassis.move(0.5,-0.5);
-
-	pros::delay(3000);
-	std::cout << "aaaa \n\n\n aaa";
-	chassis.move(0, 0);
-	pros::delay(10000000);
-
     if(startedDriver == false){
         timer = pros::millis();
         startedDriver = true;
@@ -153,7 +133,6 @@ void opcontrol()
             pros::c::controller_rumble(pros::E_CONTROLLER_MASTER, "...");
         }
         
-        chassis.move(Controller::master[LEFT_Y], Controller::master[RIGHT_Y]);
         //chassis.tank(550_rpm);
         
 		//std::cout << (pros::millis()-timer) << "," << colorSensor.get_proximity()<< "," << colorSensor.get_hue() << "," << colorSensor.get_saturation() << "\n";

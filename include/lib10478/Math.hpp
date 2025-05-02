@@ -42,10 +42,13 @@ enum turnDirection{
 };
 
 inline Angle getAngularError(Angle target, Angle position, turnDirection direction) {
-    Angle error = units::remainder(target - position, 1_stRot);
-    if(direction == CCW && error < 0_stRot) error += 1_stRot;
-    else if(direction == CW && error > 0_stRot) error -= 1_stRot;
-    return error;
+    target = units::mod(units::mod(target, 1_stRot) + 1_stRot, 1_stRot);
+    position = units::mod(units::mod(position, 1_stRot) + 1_stRot, 1_stRot);
+
+    Angle error = target - position;
+    if (direction == AUTO) return from_stDeg(std::remainder(to_stDeg(error), 360));
+    if (direction == CCW) return error < 0_stRot ? error + 1_stRot : error;
+    else return error > 0_stRot ? error - 1_stRot : error;
 }
 
 // https://www.desmos.com/calculator/7setziwlwf

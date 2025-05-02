@@ -180,7 +180,7 @@ void Chassis::tank(AngularVelocity maxVel, double scale){
 void Chassis::moveVel(ChassisSpeeds speeds,std::pair<LinearVelocity, LinearVelocity> currentVel){
     Number throttle = linearController->getPower(speeds.v.convert(mps),(currentVel.first + currentVel.second).convert(mps) / 2.0);
     Number turn = angularController->getPower(speeds.ω.convert(radps),
-                            toAngular<LinearVelocity>(currentVel.first - currentVel.second,this->trackWidth).convert(radps) / 2.0);
+                            -toAngular<LinearVelocity>(currentVel.first - currentVel.second,this->trackWidth).convert(radps) / 2.0);
 
     move(throttle - turn, throttle + turn);
 }
@@ -332,6 +332,7 @@ void Chassis::init() {
                 this->odom.update();
                 this->updateVel();
                 LinearVelocity target = 0_mps;
+                AngularVelocity targetw = 0_radps;
                 
                 switch (getState()) {
                     case ChassisState::IDLE: {
@@ -359,6 +360,7 @@ void Chassis::init() {
                                                        ,this->trackWidth);
                         
                         moveVel({omega,0_mps}, currentVel);
+                        targetw = omega;
                         break;
                     }
                     case ChassisState::FOLLOW: {
@@ -394,8 +396,8 @@ void Chassis::init() {
                 //std::cout <<pros::millis()-start<< "," <<this->currentVel.first.convert(mps)*0.5 + this->currentVel.second.convert(mps)*0.5 
                 //        <<","<< target.convert(mps) <<"," <<odom.getPose().y.convert(tile)<< "\n";
                 std::cout <<pros::millis()-start<< "," <<
-                    toAngular<LinearVelocity>(this->currentVel.first*0.5 - this->currentVel.second*0.5,this->trackWidth).convert(radps) 
-                <<"," <<"\n";
+                    -toAngular<LinearVelocity>(this->currentVel.first*0.5 - this->currentVel.second*0.5,this->trackWidth).convert(radps) 
+                 << "," << targetw.convert(radps) << "," << to_cDeg(odom.getPose().orientation)<<"\n";
             }
             
 

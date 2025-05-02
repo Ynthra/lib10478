@@ -7,9 +7,10 @@
 #include "pros/adi.hpp"
 #include "pros/optical.hpp"
 #include "lib10478/PID.hpp"
+#include "lemlib/api.hpp"
 #pragma once
 
-extern lib10478::Chassis chassis;
+extern lemlib::Chassis chassis;
 extern lemlib::MotorGroup intake;
 extern lemlib::Motor arm;
 
@@ -35,7 +36,7 @@ enum lbTargets{
 	IDLE = 106,
 	ALLIGNED = 83,
 	RAISED = 60,
-	SCORING = -32,
+	SCORING = -40,
 	HANGING = 0
 };
 inline lbTargets lbtarget = IDLE;
