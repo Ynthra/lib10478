@@ -22,12 +22,13 @@ void detectRing(){
     Colour detectedColour = getColour();
     if (detectedColour != NONE && detectedColour != teamColour){
         isSorting = true;
-        targetAngle = SETPOINT(0.86);
+        targetAngle = SETPOINT(0.89);
         pros::c::motor_move_absolute(11,to_stDeg(targetAngle), 600);
+        pros::c::controller_rumble(pros::E_CONTROLLER_MASTER, ".");
     }
 }
 void sort(){
-    const bool pastTarget = topIntake.getAngle() > targetAngle;
+    const bool pastTarget = topIntake.getAngle() > (targetAngle - 0.5_stDeg);
     if (!isSorting){
         timeSorting = 0;
         return;

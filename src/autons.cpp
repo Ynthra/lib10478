@@ -10,14 +10,18 @@ void sevenRingsafe(){
     arm.move(0);
     chassis.tank(-80, -80);
     pros::delay(200);
-    chassis.moveToPose(-31.5, 3, 60, 2500,{.forwards=false,.lead=0.75,.maxSpeed=90});
+    //why is this shaky??
+    chassis.moveToPose(-31.5, 3, 60, 2500,{.forwards=false,.lead=0.85,.maxSpeed=127,.minSpeed=5,.earlyExitRange=5});
     arm.move(1);
     pros::delay(600);
     arm.move(0);
     chassis.waitUntilDone();
-    pros::delay(200);
+    chassis.turnToHeading(60,300);
+    chassis.waitUntilDone();
+    chassis.tank(-30,-30);
+    pros::delay(800);
     clamp.retract();
-    pros::delay(200);
+    pros::delay(150);
     pros::Task task([&](){
         while (true) {
             detectRing();
@@ -29,6 +33,30 @@ void sevenRingsafe(){
             }
         }
     });
-    chassis.moveToPose(-35 , 24, -45 ,2000,{.lead=0.35});
+    chassis.moveToPose(-38, 24, -45 ,2000,{.lead=0.5});
     chassis.waitUntilDone();
+    pros::delay(200);
+    chassis.moveToPoint(-32, 17, 1000);
+    chassis.waitUntilDone();
+    chassis.turnToPoint(4, 57, 1000);
+    chassis.waitUntilDone();
+    pros::delay(100);
+    chassis.tank(60, 60);
+    pros::delay(800);
+    chassis.tank(40, 40);
+    pros::delay(200);
+    chassis.tank(-30, -30);
+    pros::delay(550);
+    chassis.tank(30, 30);
+    pros::delay(650);
+    chassis.tank(-30, -30);
+    pros::delay(550);
+    chassis.tank(30, 30);
+    pros::delay(650);
+    chassis.tank(-30, -30);
+    pros::delay(950);
+    chassis.tank(0, 0);
+    //chassis.moveToPose(-56.5, 14, -175 ,3000,{.lead=0.75});
+    //chassis.waitUntilDone();
+    pros::delay(100000);
 }

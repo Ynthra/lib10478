@@ -77,23 +77,23 @@ pros::MotorGroup rightgroup({-18,19,20});
 lemlib::ControllerSettings linearSettings(
     14, //kP
     0, //ki
-    35, //kd
+    38, //kd
     0, //windup range
     1, //small error range
     100, //small error timeout
     3, //large error range
-    500, //large error timeout
+    1000, //large error timeout
     0);
 lemlib::ControllerSettings angularSettings(
-    4, //kP
+    3, //kP
     0, //ki
-    35, //kd
+    30, //kd
     0, //windup range
     1, //small error range
     100, //small error timeout
-    5, //large error range
-    500, //large error timeout
-    0);
+    3, //large error range
+    300, //large error timeout
+    20);
 lemlib::Drivetrain dt(&leftgroup,&rightgroup,12.3,3.262915,450,8);
 pros::Rotation rotation(14);
 pros::Imu imua(13);

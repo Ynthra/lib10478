@@ -49,19 +49,7 @@ void disabled() {}
 void competition_initialize() {}
 
 void autonomous() {
-	//sevenRingsafe();
-	chassis.moveToPoint(0,24,2000);
-	chassis.waitUntilDone();
-	chassis.moveToPoint(0,48,2000);
-	chassis.waitUntilDone();
-	chassis.moveToPoint(0,36,2000,{.forwards=false});
-	chassis.waitUntilDone();
-	chassis.moveToPoint(0,24,2000,{.forwards=false});
-	chassis.waitUntilDone();
-	chassis.moveToPoint(0,16,2000,{.forwards=false});
-	chassis.waitUntilDone();
-	chassis.moveToPoint(0,8,2000,{.forwards=false});
-	chassis.waitUntilDone();
+	sevenRingsafe();
 }
 
 double offset = 0.5;
@@ -99,7 +87,7 @@ void armControl(){
 	if(lbtarget == ALLIGNED) target += from_stDeg(offset);
 	const double error = to_stDeg(target-armAngle);
 
-	if(fabs(error) < 6 && lbtarget == IDLE) arm.move(0);
+	if(fabs(error) < 10 && lbtarget == IDLE) arm.move(0);
 	else arm.move(kG*sin(to_stDeg(armAngle)) + armPID.update(error));
 	//pros::c::controller_set_text(pros::E_CONTROLLER_MASTER,2,0,std::to_string(to_stDeg(armAngle)).c_str());
 	/**if(controller::Left.pressed){
@@ -110,11 +98,22 @@ void armControl(){
 	}**/
 	//controller::master.set_text(2,0,std::to_string(int(ALLIGNED) + offset));
 }
+inline float driveCurve(float input, float deadzone, float scale, float maxjoy, float minvolt, float maxvolt) {
+	if(fabs(input)>deadzone){
+		return (input *
+	(powf(2.718, -(scale / (0.1* maxjoy))) + powf(2.718, (fabs(input) - maxjoy) / (0.1*maxjoy)) * (1 - powf(2.718, -(scale / (0.1*maxjoy))))) 
+	*(1-(minvolt/maxvolt)) * (maxvolt/maxjoy) + minvolt * (input<0?-1:1));
+	}
+	else{
+		return 0;
+	}
+}
 
 bool startedDriver = false;
 bool past45s = false;
 bool exitCorner = false;
 uint32_t timer = pros::millis();
+int timeStationary = 0;
 void opcontrol()
 {
     if(startedDriver == false){
@@ -133,10 +132,15 @@ void opcontrol()
             pros::c::controller_rumble(pros::E_CONTROLLER_MASTER, "...");
         }
         
-        //chassis.tank(550_rpm);
+		chassis.tank(127*driveCurve(Controller::master[LEFT_Y]*127, 
+						1, 8, 127, 0.04, 1), 
+					127*driveCurve(Controller::master[RIGHT_Y]*127, 
+						1, 8, 127, 0.04, 1));
         
 		//std::cout << (pros::millis()-timer) << "," << colorSensor.get_proximity()<< "," << colorSensor.get_hue() << "," << colorSensor.get_saturation() << "\n";
 		
+		if(topIntake.getActualVelocity() < 0.1_radps) timeStationary += 10;
+		else timeStationary = 0;
 		detectRing();
 		if(isSorting){
 			sort();
@@ -147,6 +151,7 @@ void opcontrol()
 				if(intakePiston.is_extended()){
 					intakePiston.retract();
 				}
+				if(timeStationary > 50) timeStationary = 50;
 			}
 			else if(Controller::master[DOWN].pressing) {
 				intake.move(-100_percent);
@@ -154,6 +159,14 @@ void opcontrol()
 			if(Controller::master[L1].released){
 				pros::c::motor_move_absolute(11,to_stDeg(SETPOINT(0.65)), 400);
 				pros::c::motor_move(12, 0);
+			}
+			if(Controller::master[DOWN].released){
+				pros::c::motor_move(12, 0);
+				pros::c::motor_move(11, 0);
+			}
+			if(timeStationary > 100 && lbtarget == ALLIGNED){
+				pros::c::motor_move(12, 0);
+				pros::c::motor_move(11, 0);
 			}
 		}
 		if(Controller::master[R1].pressed){
