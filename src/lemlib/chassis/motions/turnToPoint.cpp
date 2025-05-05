@@ -6,6 +6,9 @@
 #include "pros/misc.hpp"
 
 void lemlib::Chassis::turnToPoint(float x, float y, int timeout, TurnToPointParams params, bool async) {
+    if(this->flipped){
+        y = -y
+    }
     params.minSpeed = std::abs(params.minSpeed);
     this->requestMotionStart();
     // were all motions cancelled?

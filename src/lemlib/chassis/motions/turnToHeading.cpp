@@ -6,6 +6,9 @@
 #include "pros/misc.hpp"
 
 void lemlib::Chassis::turnToHeading(float theta, int timeout, TurnToHeadingParams params, bool async) {
+    if(this->flipped){
+        theta = -theta;
+    }
     params.minSpeed = std::abs(params.minSpeed);
     this->requestMotionStart();
     // were all motions cancelled?

@@ -51,10 +51,10 @@ Pose estimatePose(float time, bool radians = false);
  * @brief Update the pose of the robot
  *
  */
-void update();
+void update(bool flipped = false);
 /**
  * @brief Initialize the odometry system
  *
  */
-void init();
+void init(bool flipped = false);
 } // namespace lemlib

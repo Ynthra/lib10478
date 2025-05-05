@@ -6,6 +6,10 @@
 #include "pros/misc.hpp"
 
 void lemlib::Chassis::moveToPose(float x, float y, float theta, int timeout, MoveToPoseParams params, bool async) {
+    if(this->flipped){
+       x = -x;
+       theta = -theta;
+    }
     // take the mutex
     this->requestMotionStart();
     // were all motions cancelled?

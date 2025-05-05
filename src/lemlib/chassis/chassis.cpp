@@ -27,7 +27,7 @@ lemlib::Drivetrain::Drivetrain(pros::MotorGroup* leftMotors, pros::MotorGroup* r
       horizontalDrift(horizontalDrift) {}
 
 lemlib::Chassis::Chassis(Drivetrain drivetrain, ControllerSettings linearSettings, ControllerSettings angularSettings,
-                         OdomSensors sensors, DriveCurve* throttleCurve, DriveCurve* steerCurve)
+                         OdomSensors sensors,bool flipped, DriveCurve* throttleCurve, DriveCurve* steerCurve)
     : drivetrain(drivetrain),
       lateralSettings(linearSettings),
       angularSettings(angularSettings),
@@ -39,7 +39,8 @@ lemlib::Chassis::Chassis(Drivetrain drivetrain, ControllerSettings linearSetting
       lateralLargeExit(lateralSettings.largeError, lateralSettings.largeErrorTimeout),
       lateralSmallExit(lateralSettings.smallError, lateralSettings.smallErrorTimeout),
       angularLargeExit(angularSettings.largeError, angularSettings.largeErrorTimeout),
-      angularSmallExit(angularSettings.smallError, angularSettings.smallErrorTimeout) {}
+      angularSmallExit(angularSettings.smallError, angularSettings.smallErrorTimeout),
+      flipped(flipped) {}
 
 /**
  * @brief calibrate the IMU given a sensors struct
@@ -96,7 +97,13 @@ void lemlib::Chassis::setPose(float x, float y, float theta, bool radians) {
     lemlib::setPose(lemlib::Pose(x, y, theta), radians);
 }
 
-void lemlib::Chassis::setPose(Pose pose, bool radians) { lemlib::setPose(pose, radians); }
+void lemlib::Chassis::setPose(Pose pose, bool radians) { 
+    if(this->flipped){
+        pose.x = -pose.x;
+        pose.theta = -pose.theta;
+    }
+    lemlib::setPose(pose, radians); 
+}
 
 lemlib::Pose lemlib::Chassis::getPose(bool radians, bool standardPos) {
     Pose pose = lemlib::getPose(true);

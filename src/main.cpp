@@ -1,27 +1,17 @@
 #include "main.h"
 #include "autons.hpp"
 #include "globals.hpp"
-#include "hardware/IMU/IMU.hpp"
-#include "hardware/IMU/V5InertialSensor.hpp"
 #include "hardware/Motor/Motor.hpp"
 #include "intake.hpp"
-#include "lib10478/Chassis.hpp"
-#include "lib10478/Math.hpp"
-#include "lib10478/bezier.hpp"
 #include "lib10478/controller.hpp"
-#include "pros/device.hpp"
-#include "pros/imu.h"
 #include "pros/misc.h"
 #include "pros/motors.h"
 #include "pros/rtos.hpp"
 #include "pros/screen.hpp"
 #include "units/Angle.hpp"
-#include "units/Vector2D.hpp"
 #include "units/units.hpp"
 #include <cmath>
 #include <cstdint>
-#include <iostream>
-#include <system_error>
 
 void initialize() {
 	pros::delay(100);
@@ -52,14 +42,32 @@ void autonomous() {
 	sevenRingsafe();
 }
 
-double offset = 0.5;
-int loops = 0;
+
 void armControl(){
+	static double offset = 0.5;
+	static int loops = 0;
+	static bool control = true;
+
+	if(Controller::master[UP].pressed){
+		arm.move(1);
+		control = false;
+	}
+	else if(Controller::master[DOWN].pressed){
+		arm.move(-1);
+		control = false;
+	}
+	if(Controller::master[UP].released || Controller::master[DOWN].released){
+		arm.move(0);
+	}
+	
     bool pressed = Controller::master[R2].pressed;
     bool released = Controller::master[R2].released;
+	if (pressed || released){
+		control = true;
+	}
     
 	if (pressed && lbtarget == IDLE) {
-		lbtarget = ALLIGNED; 
+		lbtarget = ALLIGNED;
 	}
 	if(released && lbtarget == ALLIGNED){
 		lbtarget = RAISED;
@@ -87,8 +95,11 @@ void armControl(){
 	if(lbtarget == ALLIGNED) target += from_stDeg(offset);
 	const double error = to_stDeg(target-armAngle);
 
-	if(fabs(error) < 10 && lbtarget == IDLE) arm.move(0);
-	else arm.move(kG*sin(to_stDeg(armAngle)) + armPID.update(error));
+	if(control){
+		if(fabs(error) < 10 && lbtarget == IDLE) arm.move(0);
+		else arm.move(kG*sin(to_stDeg(armAngle)) + armPID.update(error));
+	}
+	
 	//pros::c::controller_set_text(pros::E_CONTROLLER_MASTER,2,0,std::to_string(to_stDeg(armAngle)).c_str());
 	/**if(controller::Left.pressed){
 		offset += 0.5;
@@ -157,14 +168,11 @@ void opcontrol()
 				intake.move(-100_percent);
 			}
 			if(Controller::master[L1].released){
-				pros::c::motor_move_absolute(11,to_stDeg(SETPOINT(0.65)), 400);
+				if (lbtarget != ALLIGNED) pros::c::motor_move_absolute(11,to_stDeg(SETPOINT(0.65)), 400);
+				else pros::c::motor_move(11, 0);
 				pros::c::motor_move(12, 0);
 			}
 			if(Controller::master[DOWN].released){
-				pros::c::motor_move(12, 0);
-				pros::c::motor_move(11, 0);
-			}
-			if(timeStationary > 100 && lbtarget == ALLIGNED){
 				pros::c::motor_move(12, 0);
 				pros::c::motor_move(11, 0);
 			}
@@ -175,7 +183,7 @@ void opcontrol()
 		if(Controller::master[L2].pressed){
 			lDoinker.toggle();
 		}
-        if(Controller::master[UP].pressed){
+        if(Controller::master[X].pressed){
             intakePiston.toggle();
         }
         armControl();

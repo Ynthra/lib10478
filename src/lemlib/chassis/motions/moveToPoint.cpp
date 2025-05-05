@@ -6,6 +6,9 @@
 #include "pros/misc.hpp"
 
 void lemlib::Chassis::moveToPoint(float x, float y, int timeout, MoveToPointParams params, bool async) {
+    if(this->flipped){
+        x = -x;
+    }
     params.earlyExitRange = fabs(params.earlyExitRange);
     this->requestMotionStart();
     // were all motions cancelled?

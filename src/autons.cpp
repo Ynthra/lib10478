@@ -56,7 +56,5 @@ void sevenRingsafe(){
     chassis.tank(-30, -30);
     pros::delay(950);
     chassis.tank(0, 0);
-    //chassis.moveToPose(-56.5, 14, -175 ,3000,{.lead=0.75});
-    //chassis.waitUntilDone();
     pros::delay(100000);
 }

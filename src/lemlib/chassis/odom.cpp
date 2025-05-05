@@ -72,7 +72,7 @@ lemlib::Pose lemlib::estimatePose(float time, bool radians) {
     return futurePose;
 }
 
-void lemlib::update() {
+void lemlib::update(bool flipped) {
     // TODO: add particle filter
     // get the current sensor values
     float vertical1Raw = 0;
@@ -130,7 +130,10 @@ void lemlib::update() {
     lemlib::TrackingWheel* horizontalWheel = nullptr;
     if (!odomSensors.vertical1->getType()) verticalWheel = odomSensors.vertical1;
     else if (!odomSensors.vertical2->getType()) verticalWheel = odomSensors.vertical2;
-    else verticalWheel = odomSensors.vertical1;
+    else {
+        if(!flipped) verticalWheel = odomSensors.vertical1;
+        else verticalWheel = odomSensors.vertical2;
+    }
     if (odomSensors.horizontal1 != nullptr) horizontalWheel = odomSensors.horizontal1;
     else if (odomSensors.horizontal2 != nullptr) horizontalWheel = odomSensors.horizontal2;
     float rawVertical = 0;
@@ -182,11 +185,11 @@ void lemlib::update() {
     odomLocalSpeed.theta = ema(deltaHeading / 0.01, odomLocalSpeed.theta, 0.95);
 }
 
-void lemlib::init() {
+void lemlib::init(bool flipped) {
     if (trackingTask == nullptr) {
         trackingTask = new pros::Task {[=] {
             while (true) {
-                update();
+                update(flipped);
                 pros::delay(10);
             }
         }};

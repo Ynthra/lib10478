@@ -344,7 +344,7 @@ class Chassis {
          * @example main.cpp
          */
         Chassis(Drivetrain drivetrain, ControllerSettings linearSettings, ControllerSettings angularSettings,
-                OdomSensors sensors, DriveCurve* throttleCurve = &defaultDriveCurve,
+                OdomSensors sensors, bool flipped, DriveCurve* throttleCurve = &defaultDriveCurve,
                 DriveCurve* steerCurve = &defaultDriveCurve);
         /**
          * @brief Calibrate the chassis sensors. THis should be called in the initialize function
@@ -923,6 +923,7 @@ class Chassis {
         bool motionQueued = false;
 
         float distTraveled = 0;
+        bool flipped;
 
         ControllerSettings lateralSettings;
         ControllerSettings angularSettings;
