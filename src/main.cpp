@@ -39,7 +39,7 @@ void disabled() {}
 void competition_initialize() {}
 
 void autonomous() {
-	negativeside();
+	negativeside(); 
 	
 }
 
@@ -125,7 +125,7 @@ bool startedDriver = false;
 bool past45s = false;
 bool exitCorner = false;
 uint32_t timer = pros::millis();
-extern int timeStationary;
+bool disabledSort = false; 
 void opcontrol()
 {
     if(startedDriver == false){
@@ -151,9 +151,12 @@ void opcontrol()
         
 		//std::cout << (pros::millis()-timer) << "," << colorSensor.get_proximity()<< "," << colorSensor.get_hue() << "," << colorSensor.get_saturation() << "\n";
 		
-		if(topIntake.getActualVelocity() < 0.1_radps) timeStationary += 10;
-		else timeStationary = 0;
-		detectRing();
+	        if(Controller::master[Y].pressed){
+			disabledSort = !disabledSort;
+                        pros::c::controller_rumble(pros::E_CONTROLLER_MASTER, ".");
+			isSorting = false;
+                }
+		if(!disabledSort) detectRing();
 		if(isSorting){
 			sort();
 		}

@@ -48,3 +48,4 @@ enum Colour {
 };
 
 extern const Colour teamColour;
+extern int timeStationary;
