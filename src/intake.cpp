@@ -16,6 +16,7 @@ Angle targetAngle = 0_stDeg;
 int timeSorting = 0;
 int timeStopped = 0;
 bool isStopped = false;
+int timeStationary = 0;
 
 
 void detectRing(){
@@ -29,6 +30,8 @@ void detectRing(){
 }
 void sort(){
     const bool pastTarget = topIntake.getAngle() > (targetAngle - 0.5_stDeg);
+    if(units::abs(topIntake.getActualVelocity() < 0.1_radps)) timeStationary += 10;
+    else timeStationary = 0;
     if (!isSorting){
         timeSorting = 0;
         return;
@@ -37,6 +40,12 @@ void sort(){
 
     if(!isStopped) {
         if(pastTarget && timeSorting > 50) {
+            isStopped = true;
+            timeStopped = 0;
+            intake.move(0);
+        }
+        if((timeSorting > 150) && (timeStationary > 100) 
+            && (units::abs(targetAngle - topIntake.getAngle()) > 5_stDeg)) {
             isStopped = true;
             timeStopped = 0;
             intake.move(0);
