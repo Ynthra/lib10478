@@ -45,7 +45,7 @@ void sort(){
             intake.move(0);
         }
         if((timeSorting > 150) && (timeStationary > 100) 
-            && (units::abs(targetAngle - topIntake.getAngle()) > 5_stDeg)) {
+            && (units::abs(targetAngle - topIntake.getAngle()) < 5_stDeg)) {
             isStopped = true;
             timeStopped = 0;
             intake.move(0);
