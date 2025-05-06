@@ -17,6 +17,7 @@ int timeSorting = 0;
 int timeStopped = 0;
 bool isStopped = false;
 int timeStationary = 0;
+bool disabledSort = false;
 
 
 void detectRing(){

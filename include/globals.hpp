@@ -48,4 +48,5 @@ enum Colour {
 };
 
 extern const Colour teamColour;
-extern int timeStationary;
+extern int timeStationary; 
+extern bool disabledSort; 
