@@ -7,7 +7,7 @@
 
 void lemlib::Chassis::turnToPoint(float x, float y, int timeout, TurnToPointParams params, bool async) {
     if(this->flipped){
-        y = -y;
+        x = -x;
     }
     params.minSpeed = std::abs(params.minSpeed);
     this->requestMotionStart();
