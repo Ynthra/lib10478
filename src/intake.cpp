@@ -30,7 +30,7 @@ void detectRing(){
 }
 void sort(){
     const bool pastTarget = topIntake.getAngle() > (targetAngle - 0.5_stDeg);
-    if(units::abs(topIntake.getActualVelocity() < 0.1_radps)) timeStationary += 10;
+    if(units::abs(topIntake.getActualVelocity()) < 0.1_radps)timeStationary += 10;
     else timeStationary = 0;
     if (!isSorting){
         timeSorting = 0;

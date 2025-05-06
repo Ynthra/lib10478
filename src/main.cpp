@@ -39,7 +39,7 @@ void disabled() {}
 void competition_initialize() {}
 
 void autonomous() {
-	negativeside(); 
+	negativeside();
 	
 }
 
@@ -125,7 +125,7 @@ bool startedDriver = false;
 bool past45s = false;
 bool exitCorner = false;
 uint32_t timer = pros::millis();
-int timeStationary = 0;
+extern int timeStationary;
 void opcontrol()
 {
     if(startedDriver == false){
