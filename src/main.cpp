@@ -125,7 +125,6 @@ bool startedDriver = false;
 bool past45s = false;
 bool exitCorner = false;
 uint32_t timer = pros::millis();
-int timeStationary = 0;
 void opcontrol()
 {
     if(startedDriver == false){
