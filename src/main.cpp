@@ -49,11 +49,11 @@ void armControl(){
 	static bool control = true;
 
 	if(Controller::master[UP].pressed){
-		arm.move(1);
+		arm.move(-1);
 		control = false;
 	}
 	else if(Controller::master[DOWN].pressed){
-		arm.move(-1);
+		arm.move(1);
 		control = false;
 	}
 	if(Controller::master[UP].released || Controller::master[DOWN].released){
@@ -164,7 +164,7 @@ void opcontrol()
 				}
 				if(timeStationary > 50) timeStationary = 50;
 			}
-			else if(Controller::master[DOWN].pressing) {
+			else if(Controller::master[B].pressing) {
 				intake.move(-100_percent);
 			}
 			if(Controller::master[L1].released){
@@ -172,7 +172,7 @@ void opcontrol()
 				else pros::c::motor_move(11, 0);
 				pros::c::motor_move(12, 0);
 			}
-			if(Controller::master[DOWN].released){
+			if(Controller::master[B].released){
 				pros::c::motor_move(12, 0);
 				pros::c::motor_move(11, 0);
 			}

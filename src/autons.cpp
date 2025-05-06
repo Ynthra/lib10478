@@ -58,3 +58,6 @@ void sevenRingsafe(){
     chassis.tank(0, 0);
     pros::delay(100000);
 }
+void negativeside(){
+    
+}
