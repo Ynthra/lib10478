@@ -39,10 +39,14 @@ void negativeside(){
     
     // Intake task (unchanged)
     pros::Task task([&](){
-        while (true) {
+        while (pros::competition::is_autonomous()) {
             detectRing();
-            if(isSorting) sort();
-            else intake.move(1);
+            if(isSorting){
+                sort();
+            }
+            if(!isSorting){
+                intake.move(1);
+            }
         }
     });
     
@@ -100,7 +104,7 @@ void sevenRingsafe(){
     clamp.retract();
     pros::delay(150);
     pros::Task task([&](){
-        while (true) {
+        while (pros::competition::is_autonomous()) {
             detectRing();
             if(isSorting){
                 sort();
