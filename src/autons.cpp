@@ -7,6 +7,7 @@ void negativeside(){
     chassis.setPose({0, 0, -148.5}); // Mirror heading if necessary
     
     // Arm sequence (unchanged)
+    //pros::delay(2500);
     arm.move(-1);
     pros::delay(600);
     arm.move(0);
@@ -58,16 +59,18 @@ void negativeside(){
     chassis.moveToPoint(32, 17, 1000); // X flipped
     chassis.waitUntilDone();
     
-    chassis.turnToPoint(-4, 57, 1000); // X flipped
+    chassis.turnToPoint(-4, 44, 1000); // X flipped
     chassis.waitUntilDone();
     pros::delay(100);
     
     // Tank movements (unchanged, no coordinates)
     chassis.tank(60, 60);
     pros::delay(800);
-    chassis.tank(40, 40);
+    chassis.tank(45, 45);
     pros::delay(200);
-    chassis.tank(-30, -30);
+    chassis.tank(-80, -80);
+
+    /*
     pros::delay(550);
     chassis.tank(30, 30);
     pros::delay(650);
@@ -76,13 +79,18 @@ void negativeside(){
     chassis.tank(30, 30);
     pros::delay(650);
     chassis.tank(-30, -30);
+    pros::delay(550);
+    chassis.tank(30,30);
+    pros::delay(650);
+    chassis.tank(-30,-30);
     pros::delay(950);
     chassis.tank(0, 0);
     pros::delay(100000);
-
+*/
 }
 void sevenRingsafe(){
     chassis.setPose({0,0,148.5});
+    //pros::delay(2000);
     arm.move(-1);
     pros::delay(600);
     arm.move(0);
@@ -125,8 +133,13 @@ void sevenRingsafe(){
     chassis.tank(60, 60);
     pros::delay(800);
     chassis.tank(40, 40);
+    pros::delay(600);
+    arm.move(-83);
     pros::delay(200);
-    chassis.tank(-30, -30);
+    chassis.moveToPose(-31.5, 3, 60, 2500,{.forwards=false,.lead=0.85,.maxSpeed=127,.minSpeed=5,.earlyExitRange=5});
+    chassis.tank(0,0);
+    pros::delay(100000);
+    /*
     pros::delay(550);
     chassis.tank(30, 30);
     pros::delay(650);
@@ -135,7 +148,15 @@ void sevenRingsafe(){
     chassis.tank(30, 30);
     pros::delay(650);
     chassis.tank(-30, -30);
+    pros::delay(550);
+    chassis.tank(30,30);
+    pros::delay(650);
+    chassis.tank(-90,-90);
+    pros::delay(200);
+    arm.move(-0.50);
+    chassis.turnToHeading(60,300);
     pros::delay(950);
     chassis.tank(0, 0);
     pros::delay(100000);
+    */
 }

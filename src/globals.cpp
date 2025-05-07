@@ -57,7 +57,7 @@ pros::Imu imua(13);
 lemlib::TrackingWheel wheel(&rotation,2.03058,0);
 
 bool flipped = false; // false for right side, true for left side
-const Colour teamColour = BLUE;
+const Colour teamColour = RED;
 lemlib::Chassis chassis{
     dt,linearSettings,angularSettings,{nullptr,nullptr,&wheel,nullptr,&imua},
     flipped

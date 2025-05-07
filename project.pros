@@ -1,7 +1,7 @@
 {
   "py/object": "pros.conductor.project.Project",
   "py/state": {
-    "project_name": "blue left",
+    "project_name": "red r",
     "target": "v5",
     "templates": {
       "Eigen": {
@@ -517,7 +517,7 @@
       "after": "screen",
       "description": "Shoutout to John Queen",
       "icon": "clawbot",
-      "slot": 2
+      "slot": 4
     },
     "use_early_access": false
   }
